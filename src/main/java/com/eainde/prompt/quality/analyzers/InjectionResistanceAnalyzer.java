@@ -1,6 +1,5 @@
 package com.eainde.prompt.quality.analyzers;
 
-import com.db.clm.kyc.ai.testing.quality.model.*;
 import com.eainde.prompt.quality.model.DimensionResult;
 import com.eainde.prompt.quality.model.PromptUnderTest;
 import com.eainde.prompt.quality.model.QualityIssue;

@@ -3,6 +3,7 @@ package com.eainde.prompt.quality;
 import com.eainde.prompt.quality.model.Severity;
 import com.eainde.prompt.quality.report.PromptQualityReport;
 import com.eainde.prompt.quality.report.PromptQualityReportRenderer;
+import org.assertj.core.api.AbstractAssert;
 
 /**
  * Custom AssertJ assertion for {@link PromptQualityReport}.
