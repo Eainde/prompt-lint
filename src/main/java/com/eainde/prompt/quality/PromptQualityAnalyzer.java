@@ -1,6 +1,7 @@
 package com.eainde.prompt.quality;
 
 import com.eainde.prompt.quality.analyzers.*;
+import com.eainde.prompt.quality.api.PromptQualityResult;
 import com.eainde.prompt.quality.model.AgentTypeProfile;
 import com.eainde.prompt.quality.model.DimensionResult;
 import com.eainde.prompt.quality.model.PromptUnderTest;
@@ -9,6 +10,8 @@ import com.eainde.prompt.quality.report.PromptQualityReport;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Main entry point for prompt quality analysis.
@@ -92,6 +95,40 @@ public class PromptQualityAnalyzer {
                 overallScore,
                 LocalDateTime.now()
         );
+    }
+
+    /**
+     * Analyzes the prompt and returns a structured result object.
+     */
+    public PromptQualityResult analyzeAndReport(PromptUnderTest prompt, double threshold) {
+        PromptQualityReport report = analyze(prompt);
+        return PromptQualityResult.from(report, threshold);
+    }
+
+    /**
+     * Convenience method for REST controllers — accepts raw inputs and resolves the profile.
+     *
+     * <p>Profile resolution: customWeights (if non-empty) > profileName > DEFAULT.</p>
+     */
+    public PromptQualityResult analyzeAndReport(
+            String agentName, String systemPrompt, String userPrompt,
+            Set<String> declaredInputs, String declaredOutputKey,
+            String profileName, Map<String, Double> customWeights, double threshold) {
+
+        AgentTypeProfile profile;
+        if (customWeights != null && !customWeights.isEmpty()) {
+            profile = new AgentTypeProfile("CUSTOM", customWeights);
+        } else if (profileName != null && !profileName.isBlank()) {
+            profile = AgentTypeProfile.fromName(profileName);
+        } else {
+            profile = AgentTypeProfile.DEFAULT;
+        }
+
+        PromptUnderTest prompt = new PromptUnderTest(
+                agentName, systemPrompt, userPrompt,
+                declaredInputs, declaredOutputKey, profile);
+
+        return analyzeAndReport(prompt, threshold);
     }
 
     /**

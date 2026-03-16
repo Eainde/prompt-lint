@@ -80,6 +80,16 @@ public record AgentTypeProfile(
                     "INJECTION_RESISTANCE", 0.125
             ));
 
+    public static AgentTypeProfile fromName(String name) {
+        return switch (name.toUpperCase()) {
+            case "EXTRACTION" -> EXTRACTION;
+            case "CLASSIFICATION" -> CLASSIFICATION;
+            case "FORMATTING" -> FORMATTING;
+            case "REVIEW" -> REVIEW;
+            default -> DEFAULT;
+        };
+    }
+
     public double weightFor(String dimension) {
         return weights.getOrDefault(dimension, 0.125);
     }
