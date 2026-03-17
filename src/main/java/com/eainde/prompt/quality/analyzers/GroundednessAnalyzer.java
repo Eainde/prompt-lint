@@ -25,6 +25,7 @@ public class GroundednessAnalyzer implements PromptDimensionAnalyzer {
 
     private static final List<String> EXTERNAL_KNOWLEDGE_PROHIBITIONS = List.of(
             "do not use prior knowledge", "do not use external",
+            "do not use any external", "not use external knowledge",
             "do not infer", "do not assume", "do not guess",
             "no external knowledge", "no prior knowledge",
             "do not use your training", "do not use any knowledge"

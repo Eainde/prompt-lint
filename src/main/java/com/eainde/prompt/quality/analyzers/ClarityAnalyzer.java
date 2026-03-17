@@ -121,8 +121,10 @@ public class ClarityAnalyzer implements PromptDimensionAnalyzer {
         }
 
         // ── Check 5: Output format section ──────────────────────────────
-        boolean hasOutputSection = OUTPUT_SECTION_MARKERS.stream()
-                .anyMatch(systemLower::contains);
+        boolean hasResponseSchema = prompt.responseSchema() != null
+                && !prompt.responseSchema().isBlank();
+        boolean hasOutputSection = hasResponseSchema
+                || OUTPUT_SECTION_MARKERS.stream().anyMatch(systemLower::contains);
         if (hasOutputSection) {
             totalPoints += 1;
         } else {
