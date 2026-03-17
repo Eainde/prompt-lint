@@ -113,7 +113,8 @@ public class PromptQualityAnalyzer {
     public PromptQualityResult analyzeAndReport(
             String agentName, String systemPrompt, String userPrompt,
             Set<String> declaredInputs, String declaredOutputKey,
-            String profileName, Map<String, Double> customWeights, double threshold) {
+            String profileName, Map<String, Double> customWeights,
+            String responseSchema, double threshold) {
 
         AgentTypeProfile profile;
         if (customWeights != null && !customWeights.isEmpty()) {
@@ -126,7 +127,7 @@ public class PromptQualityAnalyzer {
 
         PromptUnderTest prompt = new PromptUnderTest(
                 agentName, systemPrompt, userPrompt,
-                declaredInputs, declaredOutputKey, profile);
+                declaredInputs, declaredOutputKey, profile, responseSchema);
 
         return analyzeAndReport(prompt, threshold);
     }

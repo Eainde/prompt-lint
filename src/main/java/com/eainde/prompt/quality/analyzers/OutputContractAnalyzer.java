@@ -33,7 +33,10 @@ public class OutputContractAnalyzer implements PromptDimensionAnalyzer {
         String system = prompt.systemPrompt();
 
         // ── Check 1: Has JSON example ───────────────────────────────────
-        String jsonBlock = extractJsonBlock(system);
+        String responseSchema = prompt.responseSchema();
+        String jsonBlock = (responseSchema != null && !responseSchema.isBlank())
+                ? responseSchema
+                : extractJsonBlock(system);
         if (jsonBlock == null) {
             issues.add(QualityIssue.critical("OUTPUT_CONTRACT",
                     "No JSON example found in system prompt. The agent needs a "

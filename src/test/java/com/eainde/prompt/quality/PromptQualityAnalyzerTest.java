@@ -105,7 +105,7 @@ class PromptQualityAnalyzerTest {
         Map<String, Double> weights = Map.of("CLARITY", 1.0);
         PromptQualityResult result = analyzer.analyzeAndReport(
                 "test", "You are an agent.", "{{input}}",
-                Set.of("input"), "output", "EXTRACTION", weights, 0.5);
+                Set.of("input"), "output", "EXTRACTION", weights, null, 0.5);
         assertEquals("CUSTOM", result.profile());
     }
 
@@ -115,7 +115,7 @@ class PromptQualityAnalyzerTest {
         PromptQualityAnalyzer analyzer = PromptQualityAnalyzer.create();
         PromptQualityResult result = analyzer.analyzeAndReport(
                 "test", "You are an agent.", "{{input}}",
-                Set.of("input"), "output", "EXTRACTION", Map.of(), 0.5);
+                Set.of("input"), "output", "EXTRACTION", Map.of(), null, 0.5);
         assertEquals("EXTRACTION", result.profile());
     }
 
@@ -125,7 +125,7 @@ class PromptQualityAnalyzerTest {
         PromptQualityAnalyzer analyzer = PromptQualityAnalyzer.create();
         PromptQualityResult result = analyzer.analyzeAndReport(
                 "test", "You are an agent.", "{{input}}",
-                Set.of("input"), "output", "REVIEW", null, 0.5);
+                Set.of("input"), "output", "REVIEW", null, null, 0.5);
         assertEquals("REVIEW", result.profile());
     }
 
@@ -135,7 +135,7 @@ class PromptQualityAnalyzerTest {
         PromptQualityAnalyzer analyzer = PromptQualityAnalyzer.create();
         PromptQualityResult result = analyzer.analyzeAndReport(
                 "test", "You are an agent.", "{{input}}",
-                Set.of("input"), "output", "  ", null, 0.5);
+                Set.of("input"), "output", "  ", null, null, 0.5);
         assertEquals("DEFAULT", result.profile());
     }
 
@@ -145,7 +145,7 @@ class PromptQualityAnalyzerTest {
         PromptQualityAnalyzer analyzer = PromptQualityAnalyzer.create();
         PromptQualityResult result = analyzer.analyzeAndReport(
                 "test", "You are an agent.", "{{input}}",
-                Set.of("input"), "output", null, null, 0.5);
+                Set.of("input"), "output", null, null, null, 0.5);
         assertEquals("DEFAULT", result.profile());
     }
 

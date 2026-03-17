@@ -20,6 +20,11 @@ class OutputContractAnalyzerTest {
                 Set.of("input"), "output", AgentTypeProfile.DEFAULT);
     }
 
+    private PromptUnderTest promptWithSchema(String system, String responseSchema) {
+        return new PromptUnderTest("test-agent", system, "{{input}}",
+                Set.of("input"), "output", AgentTypeProfile.DEFAULT, responseSchema);
+    }
+
     @Test
     @DisplayName("dimensionName returns OUTPUT_CONTRACT")
     void dimensionName() {
@@ -193,5 +198,38 @@ class OutputContractAnalyzerTest {
                 """;
         DimensionResult result = analyzer.analyze(prompt(system));
         assertFalse(result.issues().stream().anyMatch(i -> "OUT-007".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("responseSchema provided: analyzer uses it instead of system prompt")
+    void responseSchemaUsedOverSystemPrompt() {
+        String schema = """
+                {"records": [{"name": "Alice", "id": 1, "active": true, "middle": null}], "count": 1}
+                """;
+        DimensionResult result = analyzer.analyze(promptWithSchema("No json here.", schema.strip()));
+        assertTrue(result.score() >= 0.8);
+        assertFalse(result.issues().stream().anyMatch(i -> "OUT-001".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("responseSchema null: falls back to system prompt extraction")
+    void responseSchemaNullFallsBack() {
+        DimensionResult result = analyzer.analyze(promptWithSchema("No json here.", null));
+        assertEquals(0.0, result.score());
+        assertTrue(result.issues().stream().anyMatch(i -> "OUT-001".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("responseSchema takes priority over embedded JSON in system prompt")
+    void responseSchemaPriorityOverEmbedded() {
+        String embeddedSystem = """
+                Output: {"records": [{"active": true, "enabled": false}]}
+                """;
+        String schema = """
+                {"records": [{"name": "Alice", "id": 1, "active": true, "middle": null}], "count": 1}
+                """;
+        // schema has proper types; embedded does not
+        DimensionResult result = analyzer.analyze(promptWithSchema(embeddedSystem, schema.strip()));
+        assertFalse(result.issues().stream().anyMatch(i -> "OUT-005".equals(i.ruleId())));
     }
 }

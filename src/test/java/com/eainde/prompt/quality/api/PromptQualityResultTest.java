@@ -124,7 +124,7 @@ class PromptQualityResultTest {
         PromptQualityResult result = analyzer.analyzeAndReport(
                 "test", "You are a test agent.", "{{input}}",
                 Set.of("input"), "output",
-                "EXTRACTION", custom, 0.50);
+                "EXTRACTION", custom, null, 0.50);
 
         assertEquals("CUSTOM", result.profile());
     }
@@ -135,7 +135,7 @@ class PromptQualityResultTest {
         PromptQualityResult result = analyzer.analyzeAndReport(
                 "test", "You are a test agent.", "{{input}}",
                 Set.of("input"), "output",
-                null, null, 0.50);
+                null, null, null, 0.50);
 
         assertEquals("DEFAULT", result.profile());
     }
