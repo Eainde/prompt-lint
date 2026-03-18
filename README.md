@@ -1,6 +1,6 @@
 # prompt-lint
 
-A Java library that statically analyzes LLM prompt quality — no LLM calls required. Think of it as a linter for your AI agent prompts.
+A Java library that statically analyzes LLM prompt quality, no LLM calls required. Think of it as a linter for your AI agent prompts.
 
 It scores prompts across 8 quality dimensions, flags issues by severity, and produces detailed reports. Runs in milliseconds, integrates into CI, and catches prompt regressions before they hit production.
 
