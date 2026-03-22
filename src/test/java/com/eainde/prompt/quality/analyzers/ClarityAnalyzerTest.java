@@ -233,4 +233,54 @@ class ClarityAnalyzerTest {
         DimensionResult result = analyzer.analyze(prompt("test", "{{input}}"));
         assertEquals(1.0, result.maxScore());
     }
+
+    @Test
+    @DisplayName("CLR-008: ambiguous pronouns detected")
+    void ambiguousPronounDetected() {
+        String system = "You are a specialist. Your task is to extract data. "
+                + "Process it and return this. Check it again.";
+        DimensionResult result = analyzer.analyze(prompt(system, "{{input}}"));
+        assertTrue(result.issues().stream().anyMatch(i -> "CLR-008".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("CLR-008: no issue when pronouns have antecedent")
+    void noAmbiguousPronounIssue() {
+        String system = """
+                You are a specialist. Your task is to extract candidate names.
+                Return the candidate names as JSON.
+                ## Output
+                ```json
+                {"names": []}
+                ```
+                """;
+        DimensionResult result = analyzer.analyze(prompt(system, "{{input}}"));
+        assertFalse(result.issues().stream().anyMatch(i -> "CLR-008".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("CLR-009: low instruction density flagged")
+    void lowInstructionDensity() {
+        String preamble = "This is a very important system. We built it last year. "
+                + "It has been used by many teams. The goal is to help people. "
+                + "We value accuracy and completeness. Our team is dedicated. ";
+        String system = preamble + "You are a specialist. Extract names.";
+        DimensionResult result = analyzer.analyze(prompt(system, "{{input}}"));
+        assertTrue(result.issues().stream().anyMatch(i -> "CLR-009".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("CLR-009: no issue when instruction dense")
+    void noLowDensityIssue() {
+        String system = """
+                You are a specialist. Your task is to extract data.
+                Return JSON. Validate all fields. Check for nulls.
+                ## Output Format
+                ```json
+                {"data": []}
+                ```
+                """;
+        DimensionResult result = analyzer.analyze(prompt(system, "{{input}}"));
+        assertFalse(result.issues().stream().anyMatch(i -> "CLR-009".equals(i.ruleId())));
+    }
 }

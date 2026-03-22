@@ -1,5 +1,6 @@
 package com.eainde.prompt.quality.api;
 
+import com.eainde.prompt.quality.fix.PromptFix;
 import com.eainde.prompt.quality.model.DimensionResult;
 import com.eainde.prompt.quality.model.QualityIssue;
 import com.eainde.prompt.quality.model.Severity;
@@ -8,8 +9,13 @@ import com.eainde.prompt.quality.report.PromptQualityReport;
 import java.util.List;
 
 /**
- * Structured result object for prompt quality analysis.
- * Designed for consumption by REST endpoints and non-technical users.
+ * Structured, JSON-serializable result for prompt quality analysis.
+ *
+ * <p>Designed for REST endpoints and non-technical consumers. Flattens the
+ * internal report structure into a self-contained DTO with nested records
+ * for dimensions, issues, and fixes.</p>
+ *
+ * <p>Created via {@link #from(PromptQualityReport, double)} factory method.</p>
  */
 public record PromptQualityResult(
         String agentName,
@@ -23,7 +29,8 @@ public record PromptQualityResult(
         List<DimensionDetail> dimensions,
         IssueSummary issueSummary,
         List<IssueDetail> issues,
-        List<String> suggestions) {
+        List<String> suggestions,
+        List<FixDetail> fixes) {
 
     public record WeakestDimension(String name, double score) {}
 
@@ -42,6 +49,21 @@ public record PromptQualityResult(
             String message,
             String ruleId) {}
 
+    public record FixDetail(
+            String ruleId,
+            String description,
+            String fixType,
+            String location,
+            String replacement,
+            String confidence) {}
+
+    /**
+     * Converts an internal {@link PromptQualityReport} into an API-friendly result.
+     *
+     * @param report    the analysis report
+     * @param threshold the pass/fail threshold (0.0–1.0)
+     * @return flattened result suitable for JSON serialization
+     */
     public static PromptQualityResult from(PromptQualityReport report, double threshold) {
         var profile = report.profile();
 
@@ -75,6 +97,16 @@ public record PromptQualityResult(
                         i.ruleId()))
                 .toList();
 
+        List<FixDetail> fixes = report.suggestedFixes().stream()
+                .map(f -> new FixDetail(
+                        f.ruleId(),
+                        f.description(),
+                        f.fixType().name(),
+                        f.location().name(),
+                        f.replacement(),
+                        f.confidence().name()))
+                .toList();
+
         return new PromptQualityResult(
                 report.agentName(),
                 profile.agentType(),
@@ -87,6 +119,7 @@ public record PromptQualityResult(
                 dimensions,
                 new IssueSummary(allIssues.size(), critical, warning, info),
                 issues,
-                report.allSuggestions());
+                report.allSuggestions(),
+                fixes);
     }
 }

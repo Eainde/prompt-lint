@@ -1,5 +1,6 @@
 package com.eainde.prompt.quality.analyzers;
 
+import com.eainde.prompt.quality.fix.*;
 import com.eainde.prompt.quality.model.DimensionResult;
 import com.eainde.prompt.quality.model.PromptUnderTest;
 import com.eainde.prompt.quality.model.QualityIssue;
@@ -13,8 +14,9 @@ import java.util.List;
  *
  * <p>This is the most critical dimension for extraction agents.</p>
  */
-public class GroundednessAnalyzer implements PromptDimensionAnalyzer {
+public class GroundednessAnalyzer implements PromptDimensionAnalyzer, FixGenerator {
 
+    /** Phrases enforcing source-only extraction — GRD-001 (CRITICAL if missing). */
     private static final List<String> GROUNDING_INSTRUCTIONS = List.of(
             "only from the document", "only the information contained",
             "only from the provided", "only information from",
@@ -23,6 +25,7 @@ public class GroundednessAnalyzer implements PromptDimensionAnalyzer {
             "from the source text"
     );
 
+    /** Phrases banning use of LLM training data — GRD-002 (CRITICAL if missing). */
     private static final List<String> EXTERNAL_KNOWLEDGE_PROHIBITIONS = List.of(
             "do not use prior knowledge", "do not use external",
             "do not use any external", "not use external knowledge",
@@ -31,18 +34,28 @@ public class GroundednessAnalyzer implements PromptDimensionAnalyzer {
             "do not use your training", "do not use any knowledge"
     );
 
+    /** Phrases requiring source attribution — GRD-003 check. */
     private static final List<String> CITATION_REQUIREMENTS = List.of(
             "documentname", "document name", "pagename", "page number",
             "pagenumber", "source document", "cite", "citation",
             "reference the source"
     );
 
+    /** Explicit anti-hallucination instructions — GRD-004 check. */
     private static final List<String> FABRICATION_PROHIBITIONS = List.of(
             "never fabricate", "do not fabricate", "never invent",
             "do not invent", "never hallucinate", "never make up",
             "do not make up", "never generate names"
     );
 
+    /** Phrases that contradict grounding — GRD-007 (CRITICAL if combined with grounding). */
+    private static final List<String> CONFLICTING_GROUNDING_PHRASES = List.of(
+            "use your knowledge", "use your expertise", "fill in gaps",
+            "fill in any gaps", "supplement with", "infer from context",
+            "use background knowledge", "draw on your training"
+    );
+
+    /** Delimiters separating document content in user prompt — GRD-005 check. */
     private static final List<String> DOCUMENT_BOUNDARY_MARKERS = List.of(
             "document_start", "document_end", "document text",
             "--- document", "--- end", "<<<document", ">>>",
@@ -155,8 +168,45 @@ public class GroundednessAnalyzer implements PromptDimensionAnalyzer {
             totalPoints += 1; // Give full points — not applicable
         }
 
+        // ── Check 7: Conflicting grounding scope (GRD-007) ───────────────
+        if (hasGrounding) {
+            boolean hasConflict = CONFLICTING_GROUNDING_PHRASES.stream()
+                    .anyMatch(combinedLower::contains);
+            if (hasConflict) {
+                issues.add(QualityIssue.critical("GROUNDEDNESS",
+                        "Conflicting grounding scope: prompt says to use only provided "
+                                + "documents but also encourages using external knowledge.",
+                        "GRD-007"));
+            }
+        }
+
         double score = maxPoints > 0 ? totalPoints / maxPoints : 0;
         return new DimensionResult("GROUNDEDNESS", Math.min(score, 1.0), 1.0,
                 issues, suggestions);
+    }
+
+    @Override
+    public List<PromptFix> suggestFixes(PromptUnderTest prompt, DimensionResult result) {
+        List<PromptFix> fixes = new ArrayList<>();
+        for (QualityIssue issue : result.issues()) {
+            switch (issue.ruleId()) {
+                case "GRD-001" -> fixes.add(new PromptFix("GRD-001",
+                        "Add grounding instruction",
+                        FixType.INSERT, FixLocation.SYSTEM_PROMPT, null,
+                        "Use ONLY information from the provided documents.\n",
+                        FixConfidence.HIGH));
+                case "GRD-002" -> fixes.add(new PromptFix("GRD-002",
+                        "Add external knowledge prohibition",
+                        FixType.INSERT, FixLocation.SYSTEM_PROMPT, null,
+                        "Do NOT use any external knowledge or prior training data.\n",
+                        FixConfidence.HIGH));
+                case "GRD-004" -> fixes.add(new PromptFix("GRD-004",
+                        "Add fabrication prohibition",
+                        FixType.INSERT, FixLocation.SYSTEM_PROMPT, null,
+                        "NEVER fabricate or invent information not present in the source.\n",
+                        FixConfidence.MEDIUM));
+            }
+        }
+        return fixes;
     }
 }

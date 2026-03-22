@@ -1,10 +1,12 @@
 package com.eainde.prompt.quality.analyzers;
 
+import com.eainde.prompt.quality.fix.*;
 import com.eainde.prompt.quality.model.DimensionResult;
 import com.eainde.prompt.quality.model.PromptUnderTest;
 import com.eainde.prompt.quality.model.QualityIssue;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -22,34 +24,45 @@ import java.util.regex.Pattern;
  *   <li>Task appears before rules (not buried)</li>
  * </ul>
  */
-public class ClarityAnalyzer implements PromptDimensionAnalyzer {
+public class ClarityAnalyzer implements PromptDimensionAnalyzer, FixGenerator {
 
+    /** Phrases indicating role definition — CLR-001 check. */
     private static final List<String> ROLE_STARTERS = List.of(
             "you are a", "you are an", "your role is", "act as a", "act as an"
     );
 
+    /** Phrases indicating explicit task statement — CLR-002 check. */
     private static final List<String> TASK_MARKERS = List.of(
             "your sole task", "your task is", "your goal is", "your job is",
             "your objective", "your purpose", "you must", "you will"
     );
 
+    /** Direct command verbs — 3+ expected for a clear prompt (CLR-003). */
     private static final List<String> IMPERATIVE_VERBS = List.of(
             "extract", "classify", "identify", "return", "produce", "generate",
             "determine", "compute", "validate", "verify", "analyze", "format",
             "assemble", "normalize", "deduplicate", "merge", "review", "fix"
     );
 
+    /** Weak/vague language that reduces instruction clarity — CLR-004 check. */
     private static final List<String> VAGUE_WORDS = List.of(
             "try to", "attempt to", "if possible", "maybe", "perhaps",
             "might want to", "could potentially", "it would be nice",
             "consider", "you may want", "feel free to", "do your best"
     );
 
+    /** Pronouns that may create ambiguity when referent is unclear — CLR-008 check. */
+    private static final List<String> AMBIGUOUS_PRONOUNS = List.of(
+            " it ", " this ", " that ", " they ", " them "
+    );
+
+    /** Non-specific quantifiers — CLR-007 informational check. */
     private static final List<String> AMBIGUOUS_QUANTIFIERS = List.of(
             "some of", "various", "several", "a few", "many of",
             "a number of", "a lot of", "certain"
     );
 
+    /** Markers for output format section — CLR-005 (CRITICAL if missing). */
     private static final List<String> OUTPUT_SECTION_MARKERS = List.of(
             "## output", "output format", "return format", "json schema",
             "## response", "response format"
@@ -170,8 +183,66 @@ public class ClarityAnalyzer implements PromptDimensionAnalyzer {
                             + ". Consider using specific numbers.", "CLR-007"));
         }
 
+        // ── Check 7: Ambiguous pronoun references (CLR-008) ──────────────
+        String combined = prompt.combinedPrompt().toLowerCase();
+        String[] sentences = combined.split("[.!?]\\s+");
+        int ambiguousCount = 0;
+        for (int i = 1; i < sentences.length; i++) {
+            String sentence = sentences[i];
+            boolean hasAmbiguousPronoun = AMBIGUOUS_PRONOUNS.stream()
+                    .anyMatch(p -> sentence.contains(p) || sentence.startsWith(p.trim()));
+            if (hasAmbiguousPronoun) {
+                String prev = sentences[i - 1].trim();
+                if (prev.split("\\s+").length < 8) {
+                    ambiguousCount++;
+                }
+            }
+        }
+        if (ambiguousCount >= 2) {
+            issues.add(QualityIssue.info("CLARITY",
+                    "Found " + ambiguousCount + " potentially ambiguous pronoun references "
+                            + "(it/this/that). Consider using specific nouns.", "CLR-008"));
+        }
+
+        // ── Check 8: Instruction density (CLR-009) ───────────────────────
+        String[] allSentences = system.split("[.!?]\\s+");
+        if (allSentences.length > 4) {
+            long instructionSentences = Arrays.stream(allSentences)
+                    .filter(s -> {
+                        String lower = s.toLowerCase().trim();
+                        return IMPERATIVE_VERBS.stream().anyMatch(lower::contains)
+                                || lower.contains("must") || lower.contains("should")
+                                || lower.contains("always") || lower.contains("never");
+                    }).count();
+            double density = (double) instructionSentences / allSentences.length;
+            if (density < 0.4) {
+                issues.add(QualityIssue.info("CLARITY",
+                        String.format("Low instruction density (%.0f%% preamble). "
+                                + "Over 60%% of sentences are context rather than instructions.",
+                                (1 - density) * 100), "CLR-009"));
+            }
+        }
+
         double score = maxPoints > 0 ? totalPoints / maxPoints : 0;
         return new DimensionResult("CLARITY", Math.min(score, 1.0), 1.0,
                 issues, suggestions);
+    }
+
+    @Override
+    public List<PromptFix> suggestFixes(PromptUnderTest prompt, DimensionResult result) {
+        List<PromptFix> fixes = new ArrayList<>();
+        for (QualityIssue issue : result.issues()) {
+            switch (issue.ruleId()) {
+                case "CLR-001" -> fixes.add(new PromptFix("CLR-001", "Add role definition",
+                        FixType.INSERT, FixLocation.SYSTEM_PROMPT, null,
+                        "You are a " + prompt.agentTypeProfile().agentType().toLowerCase() + " specialist.\n",
+                        FixConfidence.HIGH));
+                case "CLR-005" -> fixes.add(new PromptFix("CLR-005", "Add output format section",
+                        FixType.INSERT, FixLocation.SYSTEM_PROMPT, null,
+                        "\n## Output Format\nRespond with a JSON object matching the expected schema.\n",
+                        FixConfidence.HIGH));
+            }
+        }
+        return fixes;
     }
 }

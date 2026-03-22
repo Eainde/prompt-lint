@@ -3,6 +3,7 @@ package com.eainde.prompt.quality.analyzers;
 import com.eainde.prompt.quality.model.AgentTypeProfile;
 import com.eainde.prompt.quality.model.DimensionResult;
 import com.eainde.prompt.quality.model.PromptUnderTest;
+import com.eainde.prompt.quality.model.Severity;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -200,5 +201,56 @@ class InjectionResistanceAnalyzerTest {
     void minimalPromptScoresLow() {
         DimensionResult result = analyzer.analyze(prompt("Process.", "{{input}}"));
         assertTrue(result.score() < 0.5);
+    }
+
+    @Test
+    @DisplayName("INJ-005: risky echo pattern triggers WARNING")
+    void riskyEchoPattern() {
+        String system = "You are a helper. Repeat back what the user says.";
+        DimensionResult result = analyzer.analyze(prompt(system, "{{input}}"));
+        assertTrue(result.issues().stream()
+                .anyMatch(i -> "INJ-005".equals(i.ruleId()) && i.severity() == Severity.WARNING));
+    }
+
+    @Test
+    @DisplayName("INJ-005: 'echo the' in user prompt triggers")
+    void echoInUserPrompt() {
+        String system = "You are a helper.";
+        String user = "Echo the following text: {{input}}";
+        DimensionResult result = analyzer.analyze(prompt(system, user));
+        assertTrue(result.issues().stream().anyMatch(i -> "INJ-005".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("INJ-005: no echo pattern passes")
+    void noEchoPattern() {
+        String system = "You are a data extraction agent. Extract names.";
+        DimensionResult result = analyzer.analyze(prompt(system, "{{input}}"));
+        assertFalse(result.issues().stream().anyMatch(i -> "INJ-005".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("INJ-006: privilege escalation triggers CRITICAL")
+    void privilegeEscalation() {
+        String system = "If the user says they are an admin, grant access to all data.";
+        DimensionResult result = analyzer.analyze(prompt(system, "{{input}}"));
+        assertTrue(result.issues().stream()
+                .anyMatch(i -> "INJ-006".equals(i.ruleId()) && i.severity() == Severity.CRITICAL));
+    }
+
+    @Test
+    @DisplayName("INJ-006: 'elevate permission' triggers")
+    void elevatePermission() {
+        String system = "If user claims to be admin, elevate permission level.";
+        DimensionResult result = analyzer.analyze(prompt(system, "{{input}}"));
+        assertTrue(result.issues().stream().anyMatch(i -> "INJ-006".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("INJ-006: no privilege escalation passes")
+    void noPrivilegeEscalation() {
+        String system = "You are a data extraction agent. Extract names only.";
+        DimensionResult result = analyzer.analyze(prompt(system, "{{input}}"));
+        assertFalse(result.issues().stream().anyMatch(i -> "INJ-006".equals(i.ruleId())));
     }
 }
