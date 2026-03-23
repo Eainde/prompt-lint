@@ -15,38 +15,73 @@ import java.util.regex.Pattern;
  */
 public class SpecificityAnalyzer implements PromptDimensionAnalyzer {
 
-    /** Matches named rule identifiers (RC1, A6.1, C3.1) — SPC-001 check. */
+    /**
+     * NEEDED in prompt: named rule identifiers like RC1, A6.1, C3.1.
+     * If &lt;2 rules found → WARNING SPC-001 (too few traceable rules).
+     * If 2-4 found → INFO SPC-001 + half point. If 5+ → full point.
+     */
     private static final Pattern RULE_ID_PATTERN =
             Pattern.compile("\\b[A-Z]{1,3}\\d+(?:\\.\\d+)?\\b");
 
-    /** Matches numbered list items (1. , 2) ) — counted as rules for SPC-001. */
+    /**
+     * NEEDED in prompt: numbered list items (1. item, 2) item).
+     * Counted toward total rule count for SPC-001.
+     */
     private static final Pattern NUMBERED_LIST_PATTERN =
             Pattern.compile("(?m)^\\s*\\d+[.):]\\s+\\S");
 
-    /** Matches bullet list items (- item, * item) — counted as rules for SPC-001. */
+    /**
+     * NEEDED in prompt: bullet list items (- item, * item).
+     * Counted toward total rule count for SPC-001.
+     */
     private static final Pattern BULLET_LIST_PATTERN =
             Pattern.compile("(?m)^\\s*[-*]\\s+\\S");
 
-    /** Matches numeric thresholds (>= 0.85, < 50) — SPC-002 check. */
+    /**
+     * SHOULD HAVE in prompt: numeric thresholds like >= 0.85, &lt; 50, = true.
+     * If NONE found → INFO SPC-002 (no concrete numeric boundaries).
+     * If 1-2 found → half point. If 3+ → full point.
+     */
     private static final Pattern THRESHOLD_PATTERN =
             Pattern.compile("[><=]=?\\s*\\d+\\.?\\d*");
 
-    /** Matches conditional logic (if/when/unless + context) — SPC-003 check. */
+    /**
+     * SHOULD HAVE in prompt: conditional logic (if X then Y, when X, unless X).
+     * If NONE found → INFO SPC-003 (no edge-case handling).
+     * If 1-2 found → half point. If 3+ → full point.
+     */
     private static final Pattern CONDITIONAL_PATTERN =
             Pattern.compile("(?i)\\b(if\\s+[^,.]{5,}|when\\s+[^,.]{5,}|unless\\s+[^,.]{5,})");
 
-    /** Matches positive examples (valid, correct, Example:) — SPC-004 check. */
+    /**
+     * NEEDED in prompt: positive examples showing correct behavior (valid, correct, Example:).
+     * If NONE found → WARNING SPC-004 (LLM has no reference for correct output).
+     * If 1 found → INFO + half point. If 2+ → full point.
+     */
     private static final Pattern POSITIVE_EXAMPLE_PATTERN =
             Pattern.compile("(?i)(✓|✔|\\bvalid\\b|\\bcorrect\\b|\\bexample:|e\\.g\\.)");
 
-    /** Matches negative examples (invalid, wrong, never) — SPC-005 check. */
+    /**
+     * NEEDED in prompt: negative examples showing what NOT to do (invalid, wrong, never).
+     * If NONE found → WARNING SPC-005 (LLM doesn't know what to avoid).
+     * If 1 found → half point. If 2+ → full point.
+     */
     private static final Pattern NEGATIVE_EXAMPLE_PATTERN =
             Pattern.compile("(?i)(✗|✘|✕|\\binvalid\\b|\\bwrong\\b|\\bdo\\s+not\\b|\\bnever\\b)");
 
+    /**
+     * NOT NEEDED in prompt: vague verbs that don't specify HOW to act.
+     * If 2+ found → WARNING SPC-008 (replace "handle" with specific action).
+     */
     private static final List<String> VAGUE_VERBS = List.of(
             "handle", "process", "deal with", "manage", "take care of"
     );
 
+    /**
+     * NOT NEEDED in prompt: open-ended phrases giving LLM too much freedom.
+     * If ANY found → WARNING SPC-006 (replace with specific instructions).
+     * If NONE found → +1 point.
+     */
     private static final List<String> OPEN_ENDED_PHRASES = List.of(
             "be creative", "use your judgment", "do your best",
             "use common sense", "figure out", "as you see fit",

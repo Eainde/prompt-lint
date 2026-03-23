@@ -26,43 +26,71 @@ import java.util.regex.Pattern;
  */
 public class ClarityAnalyzer implements PromptDimensionAnalyzer, FixGenerator {
 
-    /** Phrases indicating role definition — CLR-001 check. */
+    /**
+     * NEEDED in prompt: role definition phrases like "You are a...".
+     * If NONE found → WARNING CLR-001 (prompt lacks clear agent identity).
+     * If ANY found → +1 point.
+     */
     private static final List<String> ROLE_STARTERS = List.of(
             "you are a", "you are an", "your role is", "act as a", "act as an"
     );
 
-    /** Phrases indicating explicit task statement — CLR-002 check. */
+    /**
+     * NEEDED in prompt: explicit task statement like "Your task is...", "Your goal is...".
+     * If NONE found → WARNING CLR-002 (no clear task defined).
+     * If ANY found → +1 point. Also used for task-before-rules ordering (CLR-006).
+     */
     private static final List<String> TASK_MARKERS = List.of(
             "your sole task", "your task is", "your goal is", "your job is",
             "your objective", "your purpose", "you must", "you will"
     );
 
-    /** Direct command verbs — 3+ expected for a clear prompt (CLR-003). */
+    /**
+     * NEEDED in prompt: direct command verbs (extract, classify, return, etc.).
+     * If &lt;3 found → INFO CLR-003 (prompt uses too few direct commands).
+     * If 3+ found → +1 point. Also used for instruction density check (CLR-009).
+     */
     private static final List<String> IMPERATIVE_VERBS = List.of(
             "extract", "classify", "identify", "return", "produce", "generate",
             "determine", "compute", "validate", "verify", "analyze", "format",
             "assemble", "normalize", "deduplicate", "merge", "review", "fix"
     );
 
-    /** Weak/vague language that reduces instruction clarity — CLR-004 check. */
+    /**
+     * NOT NEEDED in prompt: vague/weak language that weakens instructions.
+     * If ANY found → WARNING CLR-004 (replace with direct commands).
+     * If NONE found → +1 point (prompt is direct and unambiguous).
+     */
     private static final List<String> VAGUE_WORDS = List.of(
             "try to", "attempt to", "if possible", "maybe", "perhaps",
             "might want to", "could potentially", "it would be nice",
             "consider", "you may want", "feel free to", "do your best"
     );
 
-    /** Pronouns that may create ambiguity when referent is unclear — CLR-008 check. */
+    /**
+     * NOT NEEDED in prompt: pronouns with unclear referent.
+     * If 2+ ambiguous uses found (after short sentences) → INFO CLR-008.
+     * Prompt should use specific nouns instead of "it", "this", "that".
+     */
     private static final List<String> AMBIGUOUS_PRONOUNS = List.of(
             " it ", " this ", " that ", " they ", " them "
     );
 
-    /** Non-specific quantifiers — CLR-007 informational check. */
+    /**
+     * NOT NEEDED in prompt: non-specific quantifiers like "some of", "various".
+     * If ANY found → INFO CLR-007 (use specific numbers instead).
+     * Not scored — informational only.
+     */
     private static final List<String> AMBIGUOUS_QUANTIFIERS = List.of(
             "some of", "various", "several", "a few", "many of",
             "a number of", "a lot of", "certain"
     );
 
-    /** Markers for output format section — CLR-005 (CRITICAL if missing). */
+    /**
+     * NEEDED in prompt: output format section headers like "## Output", "Response Format".
+     * If NONE found AND no responseSchema provided → CRITICAL CLR-005 (agent has no output contract).
+     * If ANY found OR responseSchema exists → +1 point.
+     */
     private static final List<String> OUTPUT_SECTION_MARKERS = List.of(
             "## output", "output format", "return format", "json schema",
             "## response", "response format"

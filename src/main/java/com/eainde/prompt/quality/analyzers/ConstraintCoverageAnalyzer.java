@@ -14,38 +14,62 @@ import java.util.regex.Pattern;
  */
 public class ConstraintCoverageAnalyzer implements PromptDimensionAnalyzer, FixGenerator {
 
-    /** Phrases for handling empty/missing input — CON-001 check. */
+    /**
+     * NEEDED in prompt: instructions for what to do when input is empty/missing.
+     * If NONE found → WARNING CON-001 (agent has no fallback for empty data).
+     * If ANY found → +1 point.
+     */
     private static final List<String> EMPTY_HANDLING = List.of(
             "if no", "if none", "if empty", "if zero", "when no",
             "empty array", "empty result", "no candidates", "no persons"
     );
 
-    /** Guidance for ambiguous cases — CON-002 check. */
+    /**
+     * SHOULD HAVE in prompt: guidance for ambiguous/uncertain cases.
+     * If NONE found → INFO CON-002 (agent has no "when in doubt" fallback).
+     * If ANY found → +1 point.
+     */
     private static final List<String> UNCERTAINTY_HANDLING = List.of(
             "if unsure", "when unsure", "when in doubt", "if uncertain",
             "if unclear", "if ambiguous", "cannot determine", "unknown"
     );
 
-    /** Prohibition keywords — 3+ expected for good coverage (CON-003). */
+    /**
+     * NEEDED in prompt: negative instructions telling agent what NOT to do.
+     * If NONE found → WARNING CON-003 (no guardrails).
+     * If 1-2 found → half point. If 3+ → full point.
+     */
     private static final List<String> NEGATIVE_INSTRUCTIONS = List.of(
             "do not", "never", "must not", "should not",
             "avoid", "exclude", "skip", "ignore"
     );
 
-    /** Default/fallback value indicators — CON-006 check. */
+    /**
+     * SHOULD HAVE in prompt (when optional fields exist): default/fallback values.
+     * Only checked if prompt mentions "optional" or "nullable" fields.
+     * If optional fields exist but NO defaults specified → INFO CON-006.
+     */
     private static final List<String> DEFAULT_VALUE_MARKERS = List.of(
             "default", "defaults to", "if not provided", "if missing",
             "fall back", "fallback"
     );
 
-    /** Large input handling phrases — CON-007 check. */
+    /**
+     * SHOULD HAVE in prompt: instructions for handling large/oversized inputs.
+     * If NONE found → INFO CON-007 (no truncation/pagination strategy).
+     * Not scored — informational only.
+     */
     private static final List<String> INPUT_SIZE_HANDLING = List.of(
             "if input exceeds", "truncate", "paginate", "too large",
             "maximum length", "split into", "if too long", "max tokens",
             "character limit"
     );
 
-    /** Field-level constraint keywords — CON-004 check. */
+    /**
+     * SHOULD HAVE in prompt: field-level constraints (nullable, required, valid values).
+     * If NONE found → INFO CON-004 (no per-field rules).
+     * If 1-2 found → half point. If 3+ → full point.
+     */
     private static final List<String> FIELD_CONSTRAINTS = List.of(
             "null", "nullable", "required", "optional", "must be",
             "must have", "cannot be", "valid values", "one of"

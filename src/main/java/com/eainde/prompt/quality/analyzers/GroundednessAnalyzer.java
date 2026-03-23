@@ -16,7 +16,11 @@ import java.util.List;
  */
 public class GroundednessAnalyzer implements PromptDimensionAnalyzer, FixGenerator {
 
-    /** Phrases enforcing source-only extraction — GRD-001 (CRITICAL if missing). */
+    /**
+     * NEEDED in prompt: instructions to use ONLY source document data.
+     * If NONE found → CRITICAL GRD-001 (agent may hallucinate freely).
+     * If ANY found → +1 point. Also used for conflict check with GRD-007.
+     */
     private static final List<String> GROUNDING_INSTRUCTIONS = List.of(
             "only from the document", "only the information contained",
             "only from the provided", "only information from",
@@ -25,7 +29,11 @@ public class GroundednessAnalyzer implements PromptDimensionAnalyzer, FixGenerat
             "from the source text"
     );
 
-    /** Phrases banning use of LLM training data — GRD-002 (CRITICAL if missing). */
+    /**
+     * NEEDED in prompt: explicit ban on using LLM's prior/training knowledge.
+     * If NONE found → CRITICAL GRD-002 (LLM may fill gaps with training data).
+     * If ANY found → +1 point.
+     */
     private static final List<String> EXTERNAL_KNOWLEDGE_PROHIBITIONS = List.of(
             "do not use prior knowledge", "do not use external",
             "do not use any external", "not use external knowledge",
@@ -34,28 +42,44 @@ public class GroundednessAnalyzer implements PromptDimensionAnalyzer, FixGenerat
             "do not use your training", "do not use any knowledge"
     );
 
-    /** Phrases requiring source attribution — GRD-003 check. */
+    /**
+     * SHOULD HAVE in prompt: citation/attribution requirements (document name, page number).
+     * If NONE found → WARNING GRD-003 (no traceability to source).
+     * If 1 found → INFO + half point. If 2+ → full point.
+     */
     private static final List<String> CITATION_REQUIREMENTS = List.of(
             "documentname", "document name", "pagename", "page number",
             "pagenumber", "source document", "cite", "citation",
             "reference the source"
     );
 
-    /** Explicit anti-hallucination instructions — GRD-004 check. */
+    /**
+     * NEEDED in prompt: explicit fabrication/hallucination ban.
+     * If NONE found → WARNING GRD-004 (LLM may invent data).
+     * If ANY found → +1 point.
+     */
     private static final List<String> FABRICATION_PROHIBITIONS = List.of(
             "never fabricate", "do not fabricate", "never invent",
             "do not invent", "never hallucinate", "never make up",
             "do not make up", "never generate names"
     );
 
-    /** Phrases that contradict grounding — GRD-007 (CRITICAL if combined with grounding). */
+    /**
+     * NOT NEEDED in prompt: phrases that contradict grounding instructions.
+     * If ANY found AND grounding instructions also exist → CRITICAL GRD-007
+     * (contradictory: "only from document" + "fill in gaps" confuses the LLM).
+     */
     private static final List<String> CONFLICTING_GROUNDING_PHRASES = List.of(
             "use your knowledge", "use your expertise", "fill in gaps",
             "fill in any gaps", "supplement with", "infer from context",
             "use background knowledge", "draw on your training"
     );
 
-    /** Delimiters separating document content in user prompt — GRD-005 check. */
+    /**
+     * NEEDED in user prompt: delimiters separating document content from instructions.
+     * If NONE found in user prompt → WARNING GRD-005 (source text not clearly bounded).
+     * If ANY found → +1 point.
+     */
     private static final List<String> DOCUMENT_BOUNDARY_MARKERS = List.of(
             "document_start", "document_end", "document text",
             "--- document", "--- end", "<<<document", ">>>",

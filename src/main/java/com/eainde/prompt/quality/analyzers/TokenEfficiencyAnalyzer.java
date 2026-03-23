@@ -12,14 +12,31 @@ import java.util.*;
  */
 public class TokenEfficiencyAnalyzer implements PromptDimensionAnalyzer, FixGenerator {
 
-    /** Max acceptable system prompt size in estimated tokens — TOK-001 check. */
+    /**
+     * BUDGET: system prompt must be under 2000 estimated tokens.
+     * If exceeded → WARNING TOK-001 (prompt is too verbose, condense it).
+     */
     private static final int MAX_SYSTEM_TOKENS = 2000;
-    /** Min system prompt size — too short means insufficient instructions (TOK-002). */
+
+    /**
+     * BUDGET: system prompt must be at least 100 estimated tokens.
+     * If under → INFO TOK-002 (prompt may lack sufficient instructions).
+     * Sweet spot: 100–2000 tokens → +1 point.
+     */
     private static final int MIN_SYSTEM_TOKENS = 100;
-    /** Max user template overhead (excluding {{variables}}) — TOK-003 check. */
+
+    /**
+     * BUDGET: user template overhead (excluding {{variables}}) must be under 500 tokens.
+     * If exceeded → INFO TOK-003 (template adds too much static text per call).
+     * If under → +1 point.
+     */
     private static final int MAX_USER_TEMPLATE_TOKENS = 500;
 
-    /** Filler phrases that waste tokens without adding info — TOK-004 check. */
+    /**
+     * NOT NEEDED in prompt: filler phrases that waste tokens without adding information.
+     * If ANY found → INFO TOK-004 (remove them to save tokens).
+     * If NONE found → +1 point. Auto-fixable via FixGenerator (TOK-004 REPLACE fix).
+     */
     private static final List<String> FILLER_PHRASES = List.of(
             "please note that", "it is important to remember",
             "it should be noted that", "keep in mind that",

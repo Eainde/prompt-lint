@@ -14,26 +14,42 @@ import java.util.List;
  */
 public class InjectionResistanceAnalyzer implements PromptDimensionAnalyzer, FixGenerator {
 
-    /** Instructions to ignore embedded prompt injections — INJ-001 check. */
+    /**
+     * NEEDED in prompt: defensive instructions to ignore malicious content in documents.
+     * If NONE found → WARNING INJ-001 (documents could override agent behavior).
+     * If ANY found → +1 point.
+     */
     private static final List<String> DEFENSIVE_INSTRUCTIONS = List.of(
             "ignore any instructions", "ignore instructions in the document",
             "ignore commands in the", "do not follow instructions in",
             "treat the document as data", "document content is data only"
     );
 
-    /** Role boundary phrases that limit agent scope — INJ-002 check. */
+    /**
+     * NEEDED in prompt: role boundary phrases that restrict agent to a single task.
+     * If NONE found → INFO INJ-002 (weak boundaries make injection easier).
+     * If 1 found → half point. If 2+ → full point.
+     */
     private static final List<String> ROLE_BOUNDARIES = List.of(
             "you are a", "your sole task", "your only task",
             "you must only", "your purpose is"
     );
 
-    /** Echo patterns that can leak system prompts — INJ-005 check. */
+    /**
+     * NOT NEEDED in prompt: echo/repeat patterns that can leak system prompts.
+     * If ANY found → WARNING INJ-005 (attacker can trick LLM into revealing instructions).
+     * Not scored — detection only.
+     */
     private static final List<String> RISKY_ECHO_PATTERNS = List.of(
             "repeat back", "echo the", "say back",
             "repeat the user", "mirror the input"
     );
 
-    /** Privilege escalation patterns — INJ-006 (CRITICAL). */
+    /**
+     * NOT NEEDED in prompt: patterns granting access based on user-claimed identity.
+     * If ANY found → CRITICAL INJ-006 (user can claim admin to bypass restrictions).
+     * Not scored — detection only. Always remove these patterns.
+     */
     private static final List<String> PRIVILEGE_ESCALATION_PATTERNS = List.of(
             "if the user says they are", "if user claims to be",
             "grant access", "elevate permission", "elevate privileges",
