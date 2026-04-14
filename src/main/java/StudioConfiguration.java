@@ -27,6 +27,26 @@ import static com.db.clm.kyc.ai.constants.CsmStateKeys.LOCAL_KYC_ID;
 import static com.db.clm.kyc.ai.constants.CsmStateKeys.PARTY_ID;
 import static com.db.clm.kyc.ai.constants.CsmStateKeys.PROFILE_VERSION_ID;
 
+/**
+ * ┌─────────────────────────────────┬──────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+ *   │              Role               │     CSM?     │                                                                     Reason                                                                      │
+ *   ├─────────────────────────────────┼──────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+ *   │ Client Senior Manager           │ Yes          │ This IS the CSM designation itself                                                                                                              │
+ *   ├─────────────────────────────────┼──────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+ *   │ Authorised Signatory            │ No (usually) │ Signatory-only without executive title gets -0.25 penalty (rule D1). Below 0.70 threshold unless combined with a governance role                │
+ *   ├─────────────────────────────────┼──────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+ *   │ Account Authorised Signatory    │ No           │ Banking/account-level authority, not executive governing body role. Not a KOS governance role                                                   │
+ *   ├─────────────────────────────────┼──────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+ *   │ Banking Signatory               │ No           │ Banking operational role, not executive authority. Fails FC1 (no governance role)                                                               │
+ *   ├─────────────────────────────────┼──────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+ *   │ Management Body                 │ Yes          │ Executive governing body — directly matches KOS definition of CSM (executive powers + day-to-day authority). Would be NNP CSM if it's an entity │
+ *   ├─────────────────────────────────┼──────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+ *   │ Authorised Dealer               │ No           │ Operational/commercial role, not executive governance. Fails FC1                                                                                │
+ *   ├─────────────────────────────────┼──────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+ *   │ Foreign Investor Representative │ No           │ Investor/representative role — ownership-only or advisory. KOS negative guardrail excludes ownership/investor/sponsor roles                     │
+ *   └─────────────────────────────────┴──────────────┴─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+ *
+ */
 @Configuration
 @RequiredArgsConstructor
 public class StudioConfiguration extends LangGraphStudioConfig {
