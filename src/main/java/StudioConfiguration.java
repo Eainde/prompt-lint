@@ -173,4 +173,60 @@ public class StudioConfiguration extends LangGraphStudioConfig {
         bean.setLoadOnStartup(1);
         return bean;
     }
+
+
+
+    @PostMapping("/admin/recreate-bean")
+    public List<String> recreateBeanDeep(@RequestParam String beanName) {
+        DefaultListableBeanFactory factory =
+                (DefaultListableBeanFactory) context.getBeanFactory();
+
+        // 1. Collect the full dependency tree (bottom-up order)
+        Set<String> toRecreate = new LinkedHashSet<>();
+        collectDependencies(factory, beanName, toRecreate);
+
+        log.info("Beans to recreate for [{}]: {}", beanName, toRecreate);
+
+        // 2. Destroy all in collected order (leaves first)
+        List<String> results = new ArrayList<>();
+        for (String name : toRecreate) {
+            try {
+                factory.destroySingleton(name);
+                results.add(name + ": destroyed");
+            } catch (Exception e) {
+                results.add(name + ": destroy failed - " + e.getMessage());
+                log.error("Failed to destroy bean: {}", name, e);
+            }
+        }
+
+        // 3. Re-create the top-level bean — Spring auto-creates all dependencies
+        try {
+            factory.getBean(beanName);
+            results.add(beanName + ": fully recreated with all dependencies");
+            log.info("Successfully recreated bean tree rooted at: {}", beanName);
+        } catch (Exception e) {
+            results.add(beanName + ": recreation failed - " + e.getMessage());
+            log.error("Failed to recreate bean: {}", beanName, e);
+        }
+
+        return results;
+    }
+
+    private void collectDependencies(DefaultListableBeanFactory factory,
+                                     String beanName,
+                                     Set<String> collected) {
+        if (!factory.containsBeanDefinition(beanName)) {
+            return; // skip framework/third-party beans without definitions
+        }
+
+        // Get beans that this bean depends on
+        String[] dependencies = factory.getDependenciesForBean(beanName);
+        for (String dep : dependencies) {
+            if (!collected.contains(dep) && factory.containsBeanDefinition(dep)) {
+                collectDependencies(factory, dep, collected); // depth-first
+            }
+        }
+
+        collected.add(beanName); // add after its dependencies (bottom-up)
+    }
 }
