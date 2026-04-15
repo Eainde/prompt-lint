@@ -377,3 +377,63 @@
   ├─────────────┼────────────────────────────────────────┼───────────────────────────────────────┤
   │ 7           │ Below threshold                        │ isCsm = false                         │
   └─────────────┴────────────────────────────────────────┴───────────────────────────────────────┘
+
+
+Looking at the classifier prompt, banking/authorized signatories are NOT explicitly listed as "non-CSM" in a single rule. Instead, their exclusion comes from
+   the combination of several rules:
+
+  Signatory-Related Rules
+
+  1. A1 — CSM Definition (line 219)
+
+  Only one signatory type qualifies:
+  ▎ "Authorized signatories with entity-level sole representation authority"
+
+  This means regular banking signatories (who can sign cheques, approve payments, operate bank accounts) are not covered — only signatories who can represent
+  the entire entity qualify.
+
+  2. D2 — Negative Signal: "Signatory-only" (line 436)
+
+  ▎ Signatory-only (no executive title) → weight: -0.25
+
+  A pure signatory without a governance title gets penalized, making it very hard to reach the 0.70 threshold.
+
+  3. ST1 — Signatory Weight Adjustments (line 773)
+
+  Country-specific weights for signatory-only roles:
+
+  ┌─────────┬─────────────────────────────┬────────┬────────────────────────────────┐
+  │ Country │            Token            │ Weight │             Effect             │
+  ├─────────┼─────────────────────────────┼────────┼────────────────────────────────┤
+  │ US      │ Entity-level sole authority │ 0.00   │ Not sufficient alone           │
+  ├─────────┼─────────────────────────────┼────────┼────────────────────────────────┤
+  │ DE      │ Prokura / Prokurist         │ 0.00   │ Commercial PoA, not governance │
+  ├─────────┼─────────────────────────────┼────────┼────────────────────────────────┤
+  │ DE      │ Handlungsbevollmaechtigter  │ 0.00   │ Limited authority              │
+  ├─────────┼─────────────────────────────┼────────┼────────────────────────────────┤
+  │ NL      │ Gevolmachtigde              │ 0.00   │ Not governance                 │
+  ├─────────┼─────────────────────────────┼────────┼────────────────────────────────┤
+  │ NL      │ Titelhouder                 │ 0.00   │ Not governance                 │
+  └─────────┴─────────────────────────────┴────────┴────────────────────────────────┘
+
+  ▎ (line 785): "Weight < 0.30 → role alone NOT sufficient for isCsm=true"
+
+  4. A5 — Signatory Calibration (line 241)
+
+  Classifies signatory type (sole/joint/none/unknown) but does not by itself grant CSM status — it's only a scoring modifier.
+
+  5. FC1 — No Governance Role (line 87)
+
+  ▎ "If roleHints contains no recognizable governance role title → isCsm=false"
+
+  A banking signatory title like "Authorized Signatory" or "Bank Signatory" is not a governance role title, so FC1 would trigger.
+
+  ---
+  Summary
+
+  There is no single line that says "banking signatory = non-CSM". Instead, it's the absence of inclusion:
+
+  - A1 only includes signatories with entity-level sole representation authority (line 219)
+  - FC1 excludes anyone without a governance role title (line 87)
+  - D2 penalizes signatory-only by -0.25 (line 436)
+  - ST1 gives 0.00 weight to most signatory tokens (line 773)
