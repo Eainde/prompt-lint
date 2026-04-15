@@ -40,3 +40,7 @@ build/
 .claude
 .mvn
 .idea
+.superpowers
+.mvn
+CLAUDE.md
+/docs

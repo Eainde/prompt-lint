@@ -153,6 +153,60 @@ public class OutputContractAnalyzer implements PromptDimensionAnalyzer {
             totalPoints += (camelCase > 0 && snakeCase > 0) ? 0.5 : 1.0;
         }
 
+        // ── Check 7: Schema-prompt alignment (OUT-008) ───────────────────
+        if (prompt.responseSchema() != null && !prompt.responseSchema().isBlank()) {
+            try {
+                JsonNode schema = objectMapper.readTree(prompt.responseSchema());
+                JsonNode properties = schema.get("properties");
+                if (properties != null && properties.isObject()) {
+                    String systemLower = system.toLowerCase();
+                    List<String> unreferenced = new ArrayList<>();
+                    Iterator<String> propNames = properties.fieldNames();
+                    int totalProps = 0;
+                    while (propNames.hasNext()) {
+                        String prop = propNames.next();
+                        totalProps++;
+                        if (!systemLower.contains(prop.toLowerCase())) {
+                            unreferenced.add(prop);
+                        }
+                    }
+                    if (totalProps > 0 && unreferenced.size() > totalProps / 2) {
+                        issues.add(QualityIssue.warning("OUTPUT_CONTRACT",
+                                "Schema fields not referenced in prompt: " + unreferenced
+                                        + ". Prompt should describe when/how to populate each field.",
+                                "OUT-008"));
+                    }
+                }
+
+                // ── Check 8: Enum value coverage (OUT-009) ───────────────
+                if (properties != null) {
+                    Iterator<Map.Entry<String, JsonNode>> propEntries = properties.fields();
+                    while (propEntries.hasNext()) {
+                        Map.Entry<String, JsonNode> entry = propEntries.next();
+                        JsonNode enumNode = entry.getValue().get("enum");
+                        if (enumNode != null && enumNode.isArray() && enumNode.size() > 0) {
+                            String sysLower = system.toLowerCase();
+                            boolean anyDescribed = false;
+                            for (JsonNode val : enumNode) {
+                                if (sysLower.contains(val.asText().toLowerCase())) {
+                                    anyDescribed = true;
+                                    break;
+                                }
+                            }
+                            if (!anyDescribed) {
+                                issues.add(QualityIssue.info("OUTPUT_CONTRACT",
+                                        "Enum values for '" + entry.getKey() + "' not described "
+                                                + "in prompt. Explain when each value applies.",
+                                        "OUT-009"));
+                            }
+                        }
+                    }
+                }
+            } catch (Exception ignored) {
+                // Schema parsing issues already handled by earlier checks
+            }
+        }
+
         double score = maxPoints > 0 ? totalPoints / maxPoints : 0;
         return new DimensionResult("OUTPUT_CONTRACT", Math.min(score, 1.0), 1.0,
                 issues, suggestions);

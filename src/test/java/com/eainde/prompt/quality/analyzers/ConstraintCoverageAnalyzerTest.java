@@ -177,4 +177,36 @@ class ConstraintCoverageAnalyzerTest {
         DimensionResult result = analyzer.analyze(prompt("Do stuff."));
         assertTrue(result.score() < 0.5);
     }
+
+    @Test
+    @DisplayName("CON-006: optional fields without defaults")
+    void optionalFieldsWithoutDefaults() {
+        DimensionResult result = analyzer.analyze(prompt(
+                "Extract data. Some fields are optional and nullable."));
+        assertTrue(result.issues().stream().anyMatch(i -> "CON-006".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("CON-006: no issue when defaults specified")
+    void optionalFieldsWithDefaults() {
+        DimensionResult result = analyzer.analyze(prompt(
+                "Extract data. Some fields are optional. If not provided, defaults to empty string."));
+        assertFalse(result.issues().stream().anyMatch(i -> "CON-006".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("CON-007: no input size handling")
+    void noInputSizeHandling() {
+        DimensionResult result = analyzer.analyze(prompt(
+                "Extract all names from the document."));
+        assertTrue(result.issues().stream().anyMatch(i -> "CON-007".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("CON-007: no issue when truncation mentioned")
+    void inputSizeHandlingPresent() {
+        DimensionResult result = analyzer.analyze(prompt(
+                "Extract names. If input exceeds 4000 tokens, truncate."));
+        assertFalse(result.issues().stream().anyMatch(i -> "CON-007".equals(i.ruleId())));
+    }
 }

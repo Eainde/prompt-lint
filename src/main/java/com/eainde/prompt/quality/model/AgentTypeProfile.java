@@ -80,6 +80,9 @@ public record AgentTypeProfile(
                     "INJECTION_RESISTANCE", 0.125
             ));
 
+    /**
+     * Resolves a profile by name (case-insensitive). Returns {@link #DEFAULT} for unknown names.
+     */
     public static AgentTypeProfile fromName(String name) {
         return switch (name.toUpperCase()) {
             case "EXTRACTION" -> EXTRACTION;
@@ -90,7 +93,19 @@ public record AgentTypeProfile(
         };
     }
 
+    /**
+     * Returns the weight for a dimension. Defaults to 0.125 (equal weight) if not configured.
+     */
     public double weightFor(String dimension) {
         return weights.getOrDefault(dimension, 0.125);
+    }
+
+    /**
+     * Returns a new profile with one dimension weight overridden. Useful for fine-tuning.
+     */
+    public AgentTypeProfile withCustomWeight(String dimension, double weight) {
+        var newWeights = new java.util.HashMap<>(this.weights);
+        newWeights.put(dimension, weight);
+        return new AgentTypeProfile(this.agentType, Map.copyOf(newWeights));
     }
 }

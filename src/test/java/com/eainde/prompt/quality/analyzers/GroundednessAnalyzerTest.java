@@ -195,4 +195,26 @@ class GroundednessAnalyzerTest {
         DimensionResult result = analyzer.analyze(prompt("test", "{{input}}", Set.of("input")));
         assertEquals(1.0, result.maxScore());
     }
+
+    @Test
+    @DisplayName("GRD-007: conflicting grounding scope detected")
+    void conflictingGroundingScope() {
+        String system = "You are a specialist. Extract information only from the provided documents. "
+                + "Use your knowledge to fill in any gaps. Do not fabricate data.\n"
+                + "## Output\n```json\n{\"data\": []}\n```";
+        DimensionResult result = analyzer.analyze(prompt(system,
+                "--- document ---\n{{sourceText}}\n--- end ---", Set.of("sourceText")));
+        assertTrue(result.issues().stream().anyMatch(i -> "GRD-007".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("GRD-007: no conflict when only grounding present")
+    void noConflictWithOnlyGrounding() {
+        String system = "You are a specialist. Extract information only from the provided documents. "
+                + "Do not use external knowledge. Never fabricate data.\n"
+                + "## Output\n```json\n{\"data\": []}\n```";
+        DimensionResult result = analyzer.analyze(prompt(system,
+                "--- document ---\n{{sourceText}}\n--- end ---", Set.of("sourceText")));
+        assertFalse(result.issues().stream().anyMatch(i -> "GRD-007".equals(i.ruleId())));
+    }
 }

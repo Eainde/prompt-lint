@@ -172,4 +172,45 @@ class TokenEfficiencyAnalyzerTest {
         DimensionResult result = analyzer.analyze(prompt(system));
         assertFalse(result.issues().stream().anyMatch(i -> "TOK-001".equals(i.ruleId())));
     }
+
+    @Test
+    @DisplayName("TOK-005: near-duplicate sentences detected via similarity")
+    void nearDuplicateSentences() {
+        String system = "A".repeat(500)
+                + ". Extract all verified names from the source document provided. "
+                + "Do some other unrelated work here. "
+                + "Extract all verified names from the source documents provided. End.";
+        DimensionResult result = analyzer.analyze(prompt(system));
+        assertTrue(result.issues().stream().anyMatch(i -> "TOK-005".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("TOK-005: completely different sentences pass")
+    void differentSentencesPass() {
+        String system = "A".repeat(500)
+                + ". Extract all names from the document. Return the results as JSON format.";
+        DimensionResult result = analyzer.analyze(prompt(system));
+        assertFalse(result.issues().stream().anyMatch(i -> "TOK-005".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("TOK-006: redundant constraints detected (similarity 0.6-0.75)")
+    void redundantConstraintsDetected() {
+        // Sentences with similarity ~0.61 (between 0.6 and 0.75)
+        String system = "A".repeat(500)
+                + ". Always validate each input field before processing begins. "
+                + "Do something completely unrelated in between here. "
+                + "You must validate all input fields before any processing.";
+        DimensionResult result = analyzer.analyze(prompt(system));
+        assertTrue(result.issues().stream().anyMatch(i -> "TOK-006".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("TOK-006: no redundant constraints when sentences are very different")
+    void noRedundantConstraints() {
+        String system = "A".repeat(500)
+                + ". Extract names from the document text. Return results in JSON array format.";
+        DimensionResult result = analyzer.analyze(prompt(system));
+        assertFalse(result.issues().stream().anyMatch(i -> "TOK-006".equals(i.ruleId())));
+    }
 }

@@ -3,6 +3,7 @@ package com.eainde.prompt.quality.analyzers;
 import com.eainde.prompt.quality.model.AgentTypeProfile;
 import com.eainde.prompt.quality.model.DimensionResult;
 import com.eainde.prompt.quality.model.PromptUnderTest;
+import com.eainde.prompt.quality.model.Severity;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -180,5 +181,31 @@ class SpecificityAnalyzerTest {
     void scoreCappedAt1() {
         DimensionResult result = analyzer.analyze(prompt("R1 R2 R3 R4 R5 R6 R7. > 10 >= 0.85 < 50. If empty then stop. When null then skip. Unless absent then ignore. Example: valid. e.g. correct. Do not X. Never Y. Invalid Z."));
         assertTrue(result.score() <= 1.0);
+    }
+
+    @Test
+    @DisplayName("SPC-007: verbose section without rules flagged")
+    void verboseSectionWithoutRules() {
+        String verbose = "This section explains how the system works in great detail. ".repeat(25);
+        DimensionResult result = analyzer.analyze(prompt("## Instructions\n" + verbose));
+        assertTrue(result.issues().stream().anyMatch(i -> "SPC-007".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("SPC-008: vague verbs detected")
+    void vagueVerbsDetected() {
+        DimensionResult result = analyzer.analyze(prompt(
+                "Handle the input appropriately. Process the data. Deal with edge cases."));
+        assertTrue(result.issues().stream().anyMatch(i -> "SPC-008".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("SPC-001: numbered lists count as rules")
+    void numberedListsCountAsRules() {
+        DimensionResult result = analyzer.analyze(prompt(
+                "Follow these rules:\n1. Extract all names\n2. Validate each field\n"
+                        + "3. Return JSON\n4. Check for nulls\n5. Log errors"));
+        assertFalse(result.issues().stream().anyMatch(
+                i -> "SPC-001".equals(i.ruleId()) && i.severity() == Severity.WARNING));
     }
 }

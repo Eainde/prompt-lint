@@ -2,16 +2,23 @@ package com.eainde.prompt.quality;
 
 import com.eainde.prompt.quality.analyzers.*;
 import com.eainde.prompt.quality.api.PromptQualityResult;
+import com.eainde.prompt.quality.fix.FixGenerator;
+import com.eainde.prompt.quality.fix.PromptFix;
 import com.eainde.prompt.quality.model.AgentTypeProfile;
 import com.eainde.prompt.quality.model.DimensionResult;
 import com.eainde.prompt.quality.model.PromptUnderTest;
+import com.eainde.prompt.quality.model.QualityIssue;
+import com.eainde.prompt.quality.model.Severity;
+import com.eainde.prompt.quality.model.SeverityCalibrator;
 import com.eainde.prompt.quality.report.PromptQualityReport;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Main entry point for prompt quality analysis.
@@ -43,7 +50,7 @@ public class PromptQualityAnalyzer {
 
     private final List<PromptDimensionAnalyzer> analyzers;
 
-    private PromptQualityAnalyzer(List<PromptDimensionAnalyzer> analyzers) {
+    PromptQualityAnalyzer(List<PromptDimensionAnalyzer> analyzers) {
         this.analyzers = List.copyOf(analyzers);
     }
 
@@ -51,7 +58,8 @@ public class PromptQualityAnalyzer {
      * Creates an analyzer with all 8 standard dimension analyzers.
      */
     public static PromptQualityAnalyzer create() {
-        return new PromptQualityAnalyzer(List.of(
+        var analyzers = new ArrayList<PromptDimensionAnalyzer>();
+        analyzers.addAll(List.of(
                 new ClarityAnalyzer(),
                 new SpecificityAnalyzer(),
                 new GroundednessAnalyzer(),
@@ -61,6 +69,16 @@ public class PromptQualityAnalyzer {
                 new TokenEfficiencyAnalyzer(),
                 new InjectionResistanceAnalyzer()
         ));
+        ServiceLoader.load(PromptDimensionAnalyzer.class).forEach(plugin -> {
+            var meta = plugin.getClass().getAnnotation(DimensionMeta.class);
+            if (meta == null) {
+                System.err.println("[prompt-lint] WARNING: Skipping plugin "
+                        + plugin.getClass().getName() + " — missing @DimensionMeta annotation");
+                return;
+            }
+            analyzers.add(plugin);
+        });
+        return new PromptQualityAnalyzer(analyzers);
     }
 
     /**
@@ -69,6 +87,26 @@ public class PromptQualityAnalyzer {
      */
     public static PromptQualityAnalyzer withAnalyzers(PromptDimensionAnalyzer... analyzers) {
         return new PromptQualityAnalyzer(List.of(analyzers));
+    }
+
+    /**
+     * Returns a new analyzer with additional custom dimensions appended.
+     * Duplicate dimension names are rejected.
+     */
+    public PromptQualityAnalyzer withAdditionalAnalyzers(PromptDimensionAnalyzer... additional) {
+        var allAnalyzers = new ArrayList<>(this.analyzers);
+        var existingNames = this.analyzers.stream()
+                .map(PromptDimensionAnalyzer::dimensionName)
+                .collect(Collectors.toSet());
+        for (var analyzer : additional) {
+            if (existingNames.contains(analyzer.dimensionName())) {
+                throw new IllegalArgumentException(
+                        "Duplicate dimension name: " + analyzer.dimensionName());
+            }
+            existingNames.add(analyzer.dimensionName());
+            allAnalyzers.add(analyzer);
+        }
+        return new PromptQualityAnalyzer(allAnalyzers);
     }
 
     /**
@@ -82,18 +120,53 @@ public class PromptQualityAnalyzer {
         List<DimensionResult> results = new ArrayList<>();
 
         for (PromptDimensionAnalyzer analyzer : analyzers) {
-            DimensionResult result = analyzer.analyze(prompt);
-            results.add(result);
+            try {
+                results.add(analyzer.analyze(prompt));
+            } catch (Exception e) {
+                results.add(new DimensionResult(
+                        analyzer.dimensionName(), 0.0, 1.0,
+                        List.of(QualityIssue.warning(analyzer.dimensionName(),
+                                "Analyzer failed: " + e.getMessage(),
+                                analyzer.dimensionName() + "-ERR")),
+                        List.of()
+                ));
+            }
         }
 
+        // Calibrate severities based on agent profile
+        results = results.stream().map(r -> {
+            List<QualityIssue> calibrated = r.issues().stream()
+                    .map(issue -> {
+                        Severity cal = SeverityCalibrator.calibrate(issue, prompt.agentTypeProfile());
+                        if (cal != issue.severity()) {
+                            return new QualityIssue(issue.dimension(), cal, issue.message(), issue.ruleId());
+                        }
+                        return issue;
+                    })
+                    .toList();
+            return calibrated.equals(r.issues()) ? r
+                    : new DimensionResult(r.dimension(), r.score(), r.maxScore(), calibrated, r.suggestions());
+        }).toList();
+
         double overallScore = computeWeightedScore(results, prompt.agentTypeProfile());
+
+        List<PromptFix> allFixes = new ArrayList<>();
+        for (var analyzer : analyzers) {
+            if (analyzer instanceof FixGenerator fg) {
+                results.stream()
+                        .filter(r -> r.dimension().equals(analyzer.dimensionName()))
+                        .findFirst()
+                        .ifPresent(r -> allFixes.addAll(fg.suggestFixes(prompt, r)));
+            }
+        }
 
         return new PromptQualityReport(
                 prompt.agentName(),
                 prompt.agentTypeProfile(),
                 results,
                 overallScore,
-                LocalDateTime.now()
+                LocalDateTime.now(),
+                allFixes
         );
     }
 

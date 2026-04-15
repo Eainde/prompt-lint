@@ -1,0 +1,916 @@
+<ac:layout>
+<ac:layout-section ac:type="single">
+<ac:layout-cell>
+
+<ac:structured-macro ac:name="info">
+<ac:rich-text-body>
+<p><strong>CLM-Nexus-AI</strong> is an enterprise abstraction library built on <strong>LangChain4j</strong> and <strong>LangGraph4j</strong> for Spring Boot 3 applications integrating with <strong>Google Gemini (Vertex AI)</strong>. It eliminates the boilerplate of authentication, model configuration, state persistence, and observability &mdash; letting developers focus entirely on business logic.</p>
+</ac:rich-text-body>
+</ac:structured-macro>
+
+<table>
+<tbody>
+<tr><th>Property</th><th>Value</th></tr>
+<tr><td>Group ID</td><td><code>com.db.clm.kyc.ai</code></td></tr>
+<tr><td>Artifact ID</td><td><code>clm-nexus-ai</code></td></tr>
+<tr><td>Classifier</td><td><code>springboot3</code></td></tr>
+<tr><td>Java</td><td>17+</td></tr>
+<tr><td>Framework</td><td>Spring Boot 3</td></tr>
+<tr><td>LLM</td><td>Google Gemini (exclusive)</td></tr>
+</tbody>
+</table>
+
+<ac:structured-macro ac:name="toc">
+<ac:parameter ac:name="printable">true</ac:parameter>
+<ac:parameter ac:name="style">disc</ac:parameter>
+<ac:parameter ac:name="maxLevel">2</ac:parameter>
+<ac:parameter ac:name="minLevel">1</ac:parameter>
+</ac:structured-macro>
+
+<hr />
+
+<h1>Why Nexus-AI</h1>
+
+<p>Without Nexus-AI, integrating Google Gemini into an enterprise Spring Boot application requires developers to manually handle:</p>
+
+<table>
+<tbody>
+<tr><th>Concern</th><th>Without Nexus-AI</th><th>With Nexus-AI</th></tr>
+<tr><td><strong>Authentication</strong></td><td>Write Azure AD JWT assertion, WIF token exchange, Google SA impersonation, token refresh</td><td>Set YAML properties. Framework handles everything.</td></tr>
+<tr><td><strong>Model Integration</strong></td><td>Raw HTTP clients or incomplete langchain4j Gemini support</td><td><code>@Autowired ChatModel</code> &mdash; ready to use</td></tr>
+<tr><td><strong>Observability</strong></td><td>Build custom trace listeners for every LLM interaction</td><td>Auto-configured Langfuse tracing &mdash; zero code</td></tr>
+<tr><td><strong>State Persistence</strong></td><td>Implement checkpoint storage, chat memory, workflow tracking</td><td>Oracle-backed, auto-configured, transparent</td></tr>
+<tr><td><strong>JSON Output</strong></td><td>Parse unpredictable LLM responses manually</td><td>Built-in JSON sanitizer, structured output</td></tr>
+<tr><td><strong>Configuration</strong></td><td>Hardcoded URLs, credentials, model parameters</td><td>Centralized YAML-driven configuration</td></tr>
+</tbody>
+</table>
+
+<ac:structured-macro ac:name="note">
+<ac:rich-text-body>
+<p><strong>Developer workflow with Nexus-AI:</strong> Add Maven Dependency &rarr; Configure application.yml &rarr; <code>@Autowired ChatModel</code> &rarr; Build agents</p>
+</ac:rich-text-body>
+</ac:structured-macro>
+
+<hr />
+
+<h1>Architecture Overview</h1>
+
+<ac:structured-macro ac:name="code">
+<ac:parameter ac:name="language">text</ac:parameter>
+<ac:parameter ac:name="title">CLM-Nexus-AI Architecture</ac:parameter>
+<ac:plain-text-body><![CDATA[┌──────────────────┐
+│  User Application │
+└────────┬─────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────────────────────┐
+│         CLM-Nexus-AI: Central Abstraction Layer             │
+│                                                             │
+│  ┌─────────────┐ ┌──────────────┐ ┌───────────────────────┐│
+│  │ YAML Config  │ │  Automated   │ │  Standardized JSON    ││
+│  │ & Properties │ │  State &     │ │  Output               ││
+│  └─────────────┘ └──────────────┘ └───────────────────────┘│
+│                                                             │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │  Centralized Developer Experience                       ││
+│  │  • WorkflowEngine  • AgentFactory  • AgentSpec          ││
+│  │  • ChatModel beans  • Listeners   • Stores              ││
+│  └─────────────────────────────────────────────────────────┘│
+└────────┬────────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Integrated Ecosystem                           │
+│                                                             │
+│  ┌──────────────┐ ┌──────────────┐ ┌───────────────────────┐│
+│  │ WIF          │ │ Custom Gemini│ │ Simplified            ││
+│  │ Authentication│ │ Implementation│ │ Observability Suite  ││
+│  │ (Azure AD →  │ │ (ChatModel + │ │ (Langfuse tracing,   ││
+│  │  Google SA)  │ │  Streaming)  │ │  metrics, prompt     ││
+│  │              │ │              │ │  versioning)          ││
+│  └──────────────┘ └──────────────┘ └───────────────────────┘│
+│                                                             │
+│  ┌──────────────────────────────────────────────────────────┐│
+│  │  LangChain4j & LangGraph4j  •  Google Gemini (Vertex AI)││
+│  │  Oracle Database             •  Langfuse                 ││
+│  └──────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────┘]]></ac:plain-text-body>
+</ac:structured-macro>
+
+<h2>5 Core Pillars</h2>
+
+<table>
+<tbody>
+<tr><th>Pillar</th><th>What It Does</th></tr>
+<tr><td><strong>Auth Manager</strong></td><td>Zero-key management via Azure AD &rarr; WIF &rarr; Google SA token chain. No static keys or hardcoded credentials.</td></tr>
+<tr><td><strong>Custom Chat Models</strong></td><td><code>NexusGoogleGenAiChatModel</code> and <code>NexusGoogleGenAiStreamingChatModel</code> &mdash; bridge gaps in langchain4j's native Gemini support.</td></tr>
+<tr><td><strong>Langfuse Observability</strong></td><td>Drop-in, auto-configured end-to-end tracing: token usage, latency, error rates, prompt versioning.</td></tr>
+<tr><td><strong>State &amp; Persistence</strong></td><td>Chat memory and multi-agent checkpoints persisted to Oracle DB. Stateless application, stateful experience.</td></tr>
+<tr><td><strong>JSON Sanitizer</strong></td><td>Normalizes raw LLM output into predictable, parsable, type-safe structured JSON.</td></tr>
+</tbody>
+</table>
+
+<h2>Capability Matrix</h2>
+
+<table>
+<tbody>
+<tr><th>Feature</th><th>Supported</th><th>Not Supported</th></tr>
+<tr><td>LLM Provider</td><td>Google Gemini (Vertex AI)</td><td>OpenAI, Anthropic</td></tr>
+<tr><td>Auth</td><td>WIF / Azure AD</td><td>Static API Keys</td></tr>
+<tr><td>State</td><td>Multi-Agent Checkpoints + Chat History</td><td>&mdash;</td></tr>
+<tr><td>Observability</td><td>Langfuse Tracing</td><td>&mdash;</td></tr>
+<tr><td>Output</td><td>JSON Formatting + Streaming</td><td>&mdash;</td></tr>
+<tr><td>Agent Patterns</td><td>Sequence, Loop, Parallel, Conditional</td><td>&mdash;</td></tr>
+</tbody>
+</table>
+
+<hr />
+
+<h1>Getting Started</h1>
+
+<h2>Prerequisites</h2>
+
+<ul>
+<li>Java 17+</li>
+<li>Maven</li>
+<li>Spring Boot 3 application</li>
+<li>Google Cloud Platform: Configured Workload Identity Pool and Provider</li>
+<li>Azure Active Directory: Access for generating access tokens</li>
+</ul>
+
+<h2>Step 1: Add Maven Dependency</h2>
+
+<ac:structured-macro ac:name="code">
+<ac:parameter ac:name="language">xml</ac:parameter>
+<ac:plain-text-body><![CDATA[<dependency>
+    <groupId>com.db.clm.kyc.ai</groupId>
+    <artifactId>clm-nexus-ai</artifactId>
+    <version>YOUR_LIBRARY_VERSION</version>
+    <classifier>springboot3</classifier>
+</dependency>]]></ac:plain-text-body>
+</ac:structured-macro>
+
+<ac:structured-macro ac:name="warning">
+<ac:rich-text-body>
+<p>The <code>springboot3</code> classifier is <strong>required</strong>.</p>
+</ac:rich-text-body>
+</ac:structured-macro>
+
+<h2>Step 2: Configure application.yml</h2>
+
+<ac:structured-macro ac:name="code">
+<ac:parameter ac:name="language">yaml</ac:parameter>
+<ac:parameter ac:name="title">application.yml</ac:parameter>
+<ac:parameter ac:name="collapse">true</ac:parameter>
+<ac:plain-text-body><![CDATA[clm:
+  nexus:
+    ai:
+      enabled: true
+      proxy: <proxy-url>
+      wif:
+        wif_provider: <path-to-wif-provider.json>
+        wif_keystore: <path-to-wif-keystore.json>
+      azure:
+        tenant-id: <YOUR_TENANT_ID>
+        client-id: "your-azure-client-id"
+        client-secret: "your-azure-client-secret"
+        scope: "your-azure-scope"
+        grant-type: "client_credentials"
+        client_assertion_type: urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+        thumbprint: <your-thumbprint>
+        db_key_protect_key_name: <key-name>
+        db_key_protect_key_passphrase: <passphrase>
+      google:
+        project-id: "your-gcp-project-id"
+        location: "us-central1"
+        transport: "GRPC"
+        chat-model-name: "gemini-1.5-pro-preview-0409"
+        output-tokens: 2048
+        temperature: 0.2
+        top-k: 40
+        top-p: 0.95
+        credentials:
+          project-number: "your-gcp-project-number"
+          location: "global"
+          workload-identity-pool-id: "your-wif-pool-id"
+          workload-identity-provider-id: "your-wif-provider-id"
+          service-account-email: "your-sa@your-project.iam.gserviceaccount.com"
+          subject-token-type: "urn:ietf:params:oauth:token-type:jwt"]]></ac:plain-text-body>
+</ac:structured-macro>
+
+<h2>Step 3: Use</h2>
+
+<ac:structured-macro ac:name="code">
+<ac:parameter ac:name="language">java</ac:parameter>
+<ac:plain-text-body><![CDATA[@Service
+public class MyAIService {
+    private final ChatModel chatModel;
+
+    public MyAIService(ChatModel chatModel) {
+        this.chatModel = chatModel;
+    }
+
+    public String ask(String question) {
+        return chatModel.generate(question);
+    }
+}]]></ac:plain-text-body>
+</ac:structured-macro>
+
+<p>That's it. The <code>ChatModel</code> bean is auto-configured with authentication, model parameters, safety settings, and observability listeners.</p>
+
+<hr />
+
+<h1>Authentication (Zero-Key Management)</h1>
+
+<p>Nexus-AI provides zero-key authentication. Developers provide certificates via YAML properties &mdash; the framework handles the entire token chain.</p>
+
+<h2>Authentication Flow</h2>
+
+<ac:structured-macro ac:name="code">
+<ac:parameter ac:name="language">text</ac:parameter>
+<ac:parameter ac:name="title">Authentication Token Chain</ac:parameter>
+<ac:plain-text-body><![CDATA[Application Properties (certs, tenant, client)
+        │
+        ▼
+┌─────────────────────┐
+│  AzureTokenService   │  ── Reads certs from DB KeyProtect
+│                      │  ── Builds signed JWT (RS256)
+│                      │  ── Calls Azure AD token endpoint
+└─────────┬───────────┘
+          │ Azure AD Access Token (JWT)
+          ▼
+┌─────────────────────┐
+│  CredentialManager   │  ── Reads WIF provider JSON config
+│                      │  ── Exchanges Azure token via WIF
+│                      │  ── Impersonates Google Service Account
+└─────────┬───────────┘
+          │ GoogleCredentials
+          ▼
+┌─────────────────────┐
+│  ChatModel Beans     │  ── Authenticated and ready
+│  (auto-configured)   │
+└─────────────────────┘]]></ac:plain-text-body>
+</ac:structured-macro>
+
+<h2>Key Classes</h2>
+
+<table>
+<tbody>
+<tr><th>Class</th><th>Responsibility</th></tr>
+<tr><td><code>AzureTokenService</code></td><td>JWT Bearer client assertion flow against Azure AD. Reads certificates from DB KeyProtect, builds signed JWT, calls token endpoint.</td></tr>
+<tr><td><code>CredentialManager</code></td><td>Exchanges Azure AD token for Google credentials via WIF. Creates ExternalAccountCredentials &rarr; STS token &rarr; ServiceAccount impersonation.</td></tr>
+<tr><td><code>CredentialUtils</code></td><td>Low-level credential construction and HTTP transport with proxy.</td></tr>
+<tr><td><code>GatewayGoogleCredentials</code></td><td>Extends <code>GoogleCredentials</code> for enterprise API gateway routing with auto-refresh.</td></tr>
+</tbody>
+</table>
+
+<ac:structured-macro ac:name="tip">
+<ac:rich-text-body>
+<p><strong>What developers do:</strong> Set YAML properties. That's it. No auth code, no token management, no key rotation.</p>
+</ac:rich-text-body>
+</ac:structured-macro>
+
+<h3>What The Framework Does Internally</h3>
+
+<ol>
+<li>Loads certificates from DB KeyProtect</li>
+<li>Creates signed JWT assertion</li>
+<li>Exchanges with Azure AD for access token</li>
+<li>Exchanges Azure token with Google WIF for STS token</li>
+<li>Impersonates Google Service Account</li>
+<li>Injects <code>GoogleCredentials</code> into all ChatModel beans</li>
+<li>Auto-refreshes tokens before expiry</li>
+</ol>
+
+<hr />
+
+<h1>Chat Models</h1>
+
+<p>Nexus-AI provides two custom ChatModel implementations wrapping Google's GenAI SDK (<code>com.google.genai</code>).</p>
+
+<h2>NexusGoogleGenAiChatModel</h2>
+
+<p><code>implements ChatModel</code> &mdash; synchronous, request-response.</p>
+
+<ac:structured-macro ac:name="expand">
+<ac:parameter ac:name="title">Key Features</ac:parameter>
+<ac:rich-text-body>
+<ul>
+<li>Retry logic (configurable <code>maxRetries</code>, default 3 with 1s sleep between)</li>
+<li>Tool calling via <code>FunctionCallingConfig</code> (modes: ANY, AUTO, REQUIRED, NONE)</li>
+<li>Structured JSON output via <code>responseSchema</code> + <code>responseMimeType("application/json")</code></li>
+<li>Multimodal support: images, audio, video, documents (extensive MIME type mapping)</li>
+<li><code>ThinkingConfig</code> with configurable <code>thinkingBudget</code></li>
+<li>Seed for reproducible outputs</li>
+<li>Safety settings (all Gemini HarmCategory values)</li>
+<li><code>returnFixedContentOnMaxTokensReached</code> flag</li>
+</ul>
+</ac:rich-text-body>
+</ac:structured-macro>
+
+<h2>NexusGoogleGenAiStreamingChatModel</h2>
+
+<p><code>implements StreamingChatModel</code> &mdash; chunked streaming response.</p>
+
+<ac:structured-macro ac:name="expand">
+<ac:parameter ac:name="title">Key Features</ac:parameter>
+<ac:rich-text-body>
+<ul>
+<li>Partial text delivery via <code>handler.onPartialResponse(partialText)</code></li>
+<li>Tool call accumulation across chunks via inner <code>StreamHandler</code> class</li>
+<li>Same auth, config, tool calling, and safety features as ChatModel</li>
+<li>No retry (streaming by nature)</li>
+</ul>
+</ac:rich-text-body>
+</ac:structured-macro>
+
+<h2>Model Factories</h2>
+
+<p>For per-request model configuration (different model, temperature, etc.):</p>
+
+<h3>NexusVertexAiChatModelFactory</h3>
+
+<ac:structured-macro ac:name="code">
+<ac:parameter ac:name="language">java</ac:parameter>
+<ac:plain-text-body><![CDATA[@Service
+public class MyService {
+    private final NexusVertexAiChatModelFactory modelFactory;
+
+    public String ask(String question) {
+        ChatModel model = modelFactory.builder("gemini-1.5-pro")
+            .temperature(0.8f)
+            .topK(10)
+            .topP(0.9f)
+            .maxOutputTokens(1024)
+            .build();
+        return model.generate(question);
+    }
+}]]></ac:plain-text-body>
+</ac:structured-macro>
+
+<h3>NexusGoogleGenAiModelFactory</h3>
+
+<ac:structured-macro ac:name="code">
+<ac:parameter ac:name="language">java</ac:parameter>
+<ac:plain-text-body><![CDATA[@Service
+public class MyService {
+    private final NexusGoogleGenAiModelFactory modelFactory;
+
+    public String askSimple(String question) {
+        // Simple — pre-configured auth, project, location, timeout
+        ChatModel model = modelFactory.create("gemini-1.5-flash");
+        return model.generate(question);
+    }
+
+    public String askAdvanced(String question) {
+        ChatModel model = modelFactory.builder()
+            .modelName("gemini-1.5-pro")
+            .temperature(0.8)
+            .maxOutputTokens(100)
+            .build();
+        return model.generate(question);
+    }
+}]]></ac:plain-text-body>
+</ac:structured-macro>
+
+<h2>Model Factory Comparison</h2>
+
+<table>
+<tbody>
+<tr><th>Feature</th><th>Default ChatModel Bean</th><th>VertexAI Factory</th><th>GenAI Factory</th></tr>
+<tr><td>Per-request config</td><td>No</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>SDK</td><td>Google GenAI</td><td>Vertex AI</td><td>Google GenAI</td></tr>
+<tr><td>Auth</td><td>Auto from YAML</td><td>Auto from YAML</td><td>Auto from YAML</td></tr>
+<tr><td>Use case</td><td>Simple, single-model apps</td><td>Dynamic model switching (Vertex)</td><td>Dynamic model switching (GenAI)</td></tr>
+</tbody>
+</table>
+
+<hr />
+
+<h1>Building Agents &mdash; AgentSpec &amp; AgentFactory</h1>
+
+<p>Agents are the core building blocks. Define them with <code>AgentSpec</code>, create them with <code>AgentFactory</code>.</p>
+
+<h2>AgentSpec &mdash; The Blueprint</h2>
+
+<p><code>AgentSpec</code> is a builder-pattern configuration record that defines everything about an agent's behavior.</p>
+
+<ac:structured-macro ac:name="code">
+<ac:parameter ac:name="language">java</ac:parameter>
+<ac:parameter ac:name="title">AgentSpec Example</ac:parameter>
+<ac:plain-text-body><![CDATA[AgentSpec spec = AgentSpec.builder("myAgentName", "Agent description")
+    .inputKeys(Map.of("sourceText", ClassInfo.of(String.class)))
+    .output("result", ClassInfo.of(String.class))
+    .tools(myTool1, myTool2)
+    .chatMemory(myChatMemory)
+    .contentRetriever(myRetriever)       // RAG
+    .inputGuardrails(myGuardrail)
+    .outputGuardrails(myOutputGuardrail)
+    .async(true)
+    .build();]]></ac:plain-text-body>
+</ac:structured-macro>
+
+<h3>Full Field Reference</h3>
+
+<table>
+<tbody>
+<tr><th>Category</th><th>Fields</th></tr>
+<tr><td><strong>Core Identity</strong></td><td><code>agentName</code> (DB prompt lookup key), <code>description</code>, <code>inputKeys</code>, <code>output</code> (key + type)</td></tr>
+<tr><td><strong>Model Override</strong></td><td><code>chatModel</code>, <code>streamingChatModel</code>, <code>returnFixedContentOnMaxTokensReached</code></td></tr>
+<tr><td><strong>Tools</strong></td><td><code>tools</code> (List), <code>toolProvider</code>, <code>hallucinatedToolNameStrategy</code>, <code>maxSequentialToolExecutions</code></td></tr>
+<tr><td><strong>Memory</strong></td><td><code>chatMemory</code>, <code>chatMemoryProvider</code>, <code>summarizedContextAgents</code></td></tr>
+<tr><td><strong>RAG</strong></td><td><code>contentRetriever</code>, <code>retrievalAugmentor</code></td></tr>
+<tr><td><strong>Guardrails</strong></td><td><code>inputGuardrails</code> (List), <code>outputGuardrails</code> (List)</td></tr>
+<tr><td><strong>Execution</strong></td><td><code>listener</code> (AgentListener), <code>async</code> (Boolean)</td></tr>
+</tbody>
+</table>
+
+<h2>AgentFactory &mdash; The Builder</h2>
+
+<p><code>AgentFactory</code> builds langchain4j agents from <code>AgentSpec</code> definitions. It centralizes all agent construction logic.</p>
+
+<h3>Dependencies (auto-injected)</h3>
+
+<ul>
+<li><code>NexusGoogleGenAiModelFactory</code> &mdash; model creation</li>
+<li><code>NexusStoreProvider</code> &mdash; prompt retrieval from DB</li>
+<li><code>AgentExecutionListener</code> &mdash; execution tracking</li>
+</ul>
+
+<h3>create(AgentSpec) Flow</h3>
+
+<ol>
+<li>Retrieves prompt config (system/user messages + model settings) from DB using <code>spec.getAgentName()</code></li>
+<li>Builds <code>ChatModel</code> with model params from DB config (modelName, temperature, topK, topP, maxOutputTokens, thinkingBudget, seed, responseSchema)</li>
+<li>Builds agent with: chatModel, name, description, systemMessage, userMessage, inputKeys, returnType, outputKey</li>
+<li>Conditionally wires: streaming model, tools, tool provider, chat memory, summarize context, content retriever (RAG), retrieval augmentor, input/output guardrails, hallucinated tool name strategy, listener, async flag</li>
+</ol>
+
+<h3>Prompt Management</h3>
+
+<ac:structured-macro ac:name="info">
+<ac:rich-text-body>
+<p>Agent prompts are stored in database and retrieved at runtime by agent name. This enables <strong>prompt versioning</strong> (update without redeployment), <strong>centralized management</strong> (all prompts in one place), and <strong>per-agent model configuration</strong> (each agent can use different model params).</p>
+</ac:rich-text-body>
+</ac:structured-macro>
+
+<hr />
+
+<h1>Workflow Engine</h1>
+
+<p><code>WorkflowEngine</code> is the <strong>entry point</strong> to the framework. It receives a request, builds the agent workflow graph, executes it with checkpoint persistence, and returns results.</p>
+
+<h2>How To Use</h2>
+
+<p>Extend <code>WorkflowEngine</code> and implement <code>buildGraph()</code>:</p>
+
+<ac:structured-macro ac:name="code">
+<ac:parameter ac:name="language">java</ac:parameter>
+<ac:parameter ac:name="title">Extending WorkflowEngine</ac:parameter>
+<ac:plain-text-body><![CDATA[@Component
+public class MyKycWorkflowEngine extends WorkflowEngine {
+
+    @Override
+    protected StateGraph<AgentState> buildGraph(
+            AgentFactory agentFactory,
+            WorkflowRequest request) {
+
+        // Define agent specs
+        var extractorSpec = AgentSpec.builder("extractor", "Extracts data from documents")
+            .inputKeys(Map.of("document", ClassInfo.of(String.class)))
+            .output("extractedData", ClassInfo.of(Map.class))
+            .build();
+
+        var validatorSpec = AgentSpec.builder("validator", "Validates extracted data")
+            .inputKeys(Map.of("extractedData", ClassInfo.of(Map.class)))
+            .output("validationResult", ClassInfo.of(String.class))
+            .build();
+
+        // Create and compose agents
+        var extractor = agentFactory.create(extractorSpec);
+        var validator = agentFactory.create(validatorSpec);
+        var workflow = agentFactory.sequence("finalResult", extractor, validator);
+
+        return buildStateGraph(workflow);
+    }
+}]]></ac:plain-text-body>
+</ac:structured-macro>
+
+<h2>Dependencies (auto-injected)</h2>
+
+<table>
+<tbody>
+<tr><th>Dependency</th><th>Purpose</th></tr>
+<tr><td><code>AgentFactory</code></td><td>Creates and composes agents</td></tr>
+<tr><td><code>OracleCheckpointSaver</code></td><td>Checkpoint persistence for recovery</td></tr>
+<tr><td><code>NexusWorkflowStore</code></td><td>Workflow metadata and state persistence</td></tr>
+<tr><td><code>WorkflowInitializer</code></td><td>Initializes workflow context, creates execution records</td></tr>
+<tr><td><code>WorkflowResultProcessor</code></td><td>Processes and persists final workflow results</td></tr>
+</tbody>
+</table>
+
+<h2>Execution Flow</h2>
+
+<ac:structured-macro ac:name="code">
+<ac:parameter ac:name="language">text</ac:parameter>
+<ac:parameter ac:name="title">End-to-End Execution Flow</ac:parameter>
+<ac:plain-text-body><![CDATA[REST Controller / Service
+    │
+    ▼
+WorkflowEngine.execute(WorkflowRequest)
+    │
+    ├── 1. workflowStore.create/resume(workflowId)
+    ├── 2. workflowStore.updateStatus(IN_PROGRESS)
+    │
+    ├── 3. buildGraph(agentFactory, request)    ← YOUR CODE
+    │       ├── agentFactory.create(specs...)
+    │       ├── agentFactory.sequence/loop/parallel(...)
+    │       └── returns StateGraph
+    │
+    ├── 4. Attach OracleCheckpointSaver to graph
+    ├── 5. Set RunnableConfig(thread_id = workflowId)
+    │
+    ├── 6. graph.execute(inputState)
+    │       ├── Agent 1 → Listener logs I/O → Langfuse traces LLM → Checkpoint saved
+    │       ├── Agent 2 → ...
+    │       └── Agent N → ...
+    │
+    ├── 7. Extract output from final state
+    ├── 8. workflowStore.updateStatus(COMPLETED)
+    │
+    └── 9. Return WorkflowResponse]]></ac:plain-text-body>
+</ac:structured-macro>
+
+<h2>Resume from Checkpoint</h2>
+
+<ac:structured-macro ac:name="code">
+<ac:parameter ac:name="language">java</ac:parameter>
+<ac:plain-text-body><![CDATA[// Resume from last successful checkpoint on failure
+WorkflowResponse response = workflowEngine.resume(workflowId);]]></ac:plain-text-body>
+</ac:structured-macro>
+
+<p>The engine loads the last checkpoint, rebuilds the graph, and continues execution from where it left off.</p>
+
+<h2>WorkflowRequest / WorkflowResponse</h2>
+
+<ac:structured-macro ac:name="code">
+<ac:parameter ac:name="language">java</ac:parameter>
+<ac:parameter ac:name="title">Request</ac:parameter>
+<ac:plain-text-body><![CDATA[WorkflowRequest request = new WorkflowRequest();
+request.setWorkflowId("optional-id");    // auto-generated if null
+request.setPartyId("PARTY-123");
+request.setWorkflowType("KYC_REVIEW");
+request.setInput(Map.of("document", documentText));
+request.setMetadata(Map.of("source", "batch-job"));]]></ac:plain-text-body>
+</ac:structured-macro>
+
+<ac:structured-macro ac:name="code">
+<ac:parameter ac:name="language">java</ac:parameter>
+<ac:parameter ac:name="title">Response</ac:parameter>
+<ac:plain-text-body><![CDATA[WorkflowResponse response = engine.execute(request);
+response.getWorkflowId();           // workflow identifier
+response.getStatus();               // COMPLETED or FAILED
+response.getOutput();               // final agent output map
+response.getMetadata();             // metadata
+response.getExecutionHistory();     // all agent I/O records]]></ac:plain-text-body>
+</ac:structured-macro>
+
+<hr />
+
+<h1>Agent Composition Patterns</h1>
+
+<p><code>AgentFactory</code> provides 4 composition patterns for building complex multi-agent workflows.</p>
+
+<h2>1. Sequence</h2>
+
+<p>Agents execute in order. Output of each agent feeds as input to the next.</p>
+
+<ac:structured-macro ac:name="code">
+<ac:parameter ac:name="language">java</ac:parameter>
+<ac:plain-text-body><![CDATA[UntypedAgent pipeline = agentFactory.sequence("finalOutput",
+    extractorAgent,
+    validatorAgent,
+    formatterAgent
+);]]></ac:plain-text-body>
+</ac:structured-macro>
+
+<p>Flexible overload &mdash; accepts mixed <code>AgentSpec</code>, <code>UntypedAgent</code>, and plain Objects:</p>
+
+<ac:structured-macro ac:name="code">
+<ac:parameter ac:name="language">java</ac:parameter>
+<ac:plain-text-body><![CDATA[UntypedAgent pipeline = agentFactory.sequence("output",
+    extractorSpec,        // AgentSpec → auto-created
+    validatorAgent,       // UntypedAgent → used as-is
+    customProcessor       // Object → treated as one-off agent
+);]]></ac:plain-text-body>
+</ac:structured-macro>
+
+<h2>2. Loop</h2>
+
+<p>Iterative workflows with exit conditions.</p>
+
+<ac:structured-macro ac:name="code">
+<ac:parameter ac:name="language">java</ac:parameter>
+<ac:plain-text-body><![CDATA[// Loop until score >= 0.8, max 3 iterations
+UntypedAgent reviewCycle = agentFactory.loop(
+    3,                                                    // max iterations
+    scope -> scope.resultState("score", 0.0) >= 0.8,     // exit condition
+    criticSpec,
+    validatorSpec
+);]]></ac:plain-text-body>
+</ac:structured-macro>
+
+<p><strong>Variants:</strong></p>
+<ul>
+<li><code>loop()</code> &mdash; exit condition checked at start of each iteration (while)</li>
+<li><code>loopUntil()</code> &mdash; same as loop, pre-condition check</li>
+<li><code>loopDoUntil()</code> &mdash; exit condition checked at end of each iteration (do-while)</li>
+</ul>
+
+<h2>3. Parallel</h2>
+
+<p>Agents execute concurrently. Results from all agents are collected.</p>
+
+<ac:structured-macro ac:name="code">
+<ac:parameter ac:name="language">java</ac:parameter>
+<ac:plain-text-body><![CDATA[UntypedAgent concurrent = agentFactory.parallel(
+    sentimentAgent,
+    entityExtractionAgent,
+    classificationAgent
+);]]></ac:plain-text-body>
+</ac:structured-macro>
+
+<h2>4. Conditional</h2>
+
+<p>Routes execution to different agents based on a condition.</p>
+
+<ac:structured-macro ac:name="code">
+<ac:parameter ac:name="language">java</ac:parameter>
+<ac:plain-text-body><![CDATA[var router = agentFactory.conditional(DocumentRouter.class);]]></ac:plain-text-body>
+</ac:structured-macro>
+
+<h2>Combining Patterns</h2>
+
+<p>Patterns compose naturally:</p>
+
+<ac:structured-macro ac:name="code">
+<ac:parameter ac:name="language">java</ac:parameter>
+<ac:parameter ac:name="title">Complex Workflow Example</ac:parameter>
+<ac:plain-text-body><![CDATA[// A pipeline where step 2 is a parallel fan-out and step 3 is an iterative review
+var step1 = agentFactory.create(preprocessSpec);
+var step2 = agentFactory.parallel(analysisA, analysisB, analysisC);
+var step3 = agentFactory.loop(3, exitCondition, reviewSpec, fixSpec);
+var step4 = agentFactory.create(summarySpec);
+
+var fullWorkflow = agentFactory.sequence("finalResult", step1, step2, step3, step4);]]></ac:plain-text-body>
+</ac:structured-macro>
+
+<hr />
+
+<h1>State Persistence &amp; Checkpoints</h1>
+
+<h2>OracleCheckpointSaver</h2>
+
+<p><code>implements BaseCheckpointSaver</code> from LangGraph4j. Persists workflow checkpoints to Oracle DB via JDBC. Auto-configured &mdash; no setup required.</p>
+
+<table>
+<tbody>
+<tr><th>Method</th><th>Description</th></tr>
+<tr><td><code>get(config)</code></td><td>Retrieve latest checkpoint by <code>thread_id</code></td></tr>
+<tr><td><code>put(config, checkpoint)</code></td><td>Save/upsert checkpoint keyed by <code>thread_id</code> + <code>checkpoint_id</code></td></tr>
+<tr><td><code>list(config)</code></td><td>List all checkpoints for a thread, ordered by creation time</td></tr>
+<tr><td><code>getTuple(config)</code></td><td>Get checkpoint with full metadata and parent reference</td></tr>
+</tbody>
+</table>
+
+<h3>Database Schema</h3>
+
+<table>
+<tbody>
+<tr><th>Column</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>thread_id</code></td><td>VARCHAR</td><td>Workflow/conversation thread identifier</td></tr>
+<tr><td><code>checkpoint_id</code></td><td>VARCHAR</td><td>Unique checkpoint identifier</td></tr>
+<tr><td><code>parent_checkpoint_id</code></td><td>VARCHAR</td><td>Links to previous checkpoint for history</td></tr>
+<tr><td><code>checkpoint_data</code></td><td>CLOB/BLOB</td><td>Serialized checkpoint state</td></tr>
+<tr><td><code>metadata</code></td><td>CLOB</td><td>Additional metadata</td></tr>
+<tr><td><code>created_at</code></td><td>TIMESTAMP</td><td>Creation timestamp</td></tr>
+</tbody>
+</table>
+
+<hr />
+
+<h1>Custom Stores (Database Layer)</h1>
+
+<p>All database access is handled by framework stores. App code never writes SQL.</p>
+
+<table>
+<tbody>
+<tr><th>Store</th><th>Purpose</th><th>Table</th></tr>
+<tr><td><code>PromptStore</code></td><td>Retrieves prompt configurations (system/user prompts + model params) per agent</td><td>Prompt config tables</td></tr>
+<tr><td><code>NexusAgentExecutionStore</code></td><td>Persists agent execution records: input/output JSON, timestamps, status</td><td><code>KYC_AI_AGENT_EXECUTION</code></td></tr>
+<tr><td><code>WorkflowStore</code></td><td>Tracks workflow lifecycle and metadata</td><td><code>KYC_AI_WORKFLOW</code></td></tr>
+<tr><td><code>NexusStoreProvider</code></td><td>Facade wrapping all stores &mdash; auto-injected into AgentFactory and listeners</td><td>&mdash;</td></tr>
+</tbody>
+</table>
+
+<h3>Workflow States</h3>
+
+<ac:structured-macro ac:name="status">
+<ac:parameter ac:name="colour">Blue</ac:parameter>
+<ac:parameter ac:name="title">PENDING</ac:parameter>
+</ac:structured-macro>
+<ac:structured-macro ac:name="status">
+<ac:parameter ac:name="colour">Yellow</ac:parameter>
+<ac:parameter ac:name="title">IN_PROGRESS</ac:parameter>
+</ac:structured-macro>
+<ac:structured-macro ac:name="status">
+<ac:parameter ac:name="colour">Green</ac:parameter>
+<ac:parameter ac:name="title">COMPLETED</ac:parameter>
+</ac:structured-macro>
+<ac:structured-macro ac:name="status">
+<ac:parameter ac:name="colour">Red</ac:parameter>
+<ac:parameter ac:name="title">FAILED</ac:parameter>
+</ac:structured-macro>
+
+<hr />
+
+<h1>Observability &amp; Listeners</h1>
+
+<p>Nexus-AI provides two auto-configured listeners. Zero code required &mdash; all agents and LLM calls are automatically instrumented.</p>
+
+<h2>AgentExecutionListener</h2>
+
+<p><code>implements AgentListener</code> &mdash; Captures input/output of <strong>every agent execution</strong> and persists to database.</p>
+
+<table>
+<tbody>
+<tr><th>Hook</th><th>What It Captures</th></tr>
+<tr><td><code>onStart(agentExecution)</code></td><td>Agent name, description, start timestamp</td></tr>
+<tr><td><code>onComplete(agentExecution)</code></td><td>Agent name, result (JSON), end timestamp, status=SUCCESS</td></tr>
+<tr><td><code>onError(agentExecution)</code></td><td>Agent name, error details, timestamp, status=ERROR</td></tr>
+</tbody>
+</table>
+
+<h2>NexusObservabilityListener</h2>
+
+<p><code>implements ChatModelListener</code> &mdash; Langfuse-based observability for <strong>all LLM calls</strong>.</p>
+
+<table>
+<tbody>
+<tr><th>Hook</th><th>What It Captures</th></tr>
+<tr><td><code>onRequest(context)</code></td><td>Creates Langfuse trace + generation span. Logs: model name, input messages.</td></tr>
+<tr><td><code>onResponse(context)</code></td><td>Updates span with: output, token usage (prompt/completion/total), latency, finish reason.</td></tr>
+<tr><td><code>onError(context)</code></td><td>Updates trace with error status, error message, error type.</td></tr>
+</tbody>
+</table>
+
+<h2>How They Work Together</h2>
+
+<ac:structured-macro ac:name="code">
+<ac:parameter ac:name="language">text</ac:parameter>
+<ac:plain-text-body><![CDATA[Agent Execution
+    ├── AgentExecutionListener.onStart()     → DB: logs start
+    │       │
+    │       ▼
+    │   ChatModel.generate()
+    │       ├── NexusObservabilityListener.onRequest()  → Langfuse: trace start
+    │       │       │
+    │       │       ▼
+    │       │   Google Gemini API call
+    │       │       │
+    │       │       ▼
+    │       └── NexusObservabilityListener.onResponse() → Langfuse: tokens, latency
+    │       │
+    │       ▼
+    └── AgentExecutionListener.onComplete()  → DB: logs input + output]]></ac:plain-text-body>
+</ac:structured-macro>
+
+<hr />
+
+<h1>Spring Boot Auto-Configuration</h1>
+
+<p>Everything is driven by <code>clm.nexus.ai.enabled=true</code>.</p>
+
+<h2>Beans Auto-Created</h2>
+
+<table>
+<tbody>
+<tr><th>Bean</th><th>Type</th><th>Condition</th></tr>
+<tr><td><code>chatModel</code></td><td><code>NexusGoogleGenAiChatModel</code></td><td>Google properties present</td></tr>
+<tr><td><code>streamingChatModel</code></td><td><code>NexusGoogleGenAiStreamingChatModel</code></td><td>Google properties present</td></tr>
+<tr><td><code>NexusVertexAiChatModelFactory</code></td><td>Model factory</td><td>Always</td></tr>
+<tr><td><code>NexusGoogleGenAiModelFactory</code></td><td>Model factory</td><td>Always</td></tr>
+<tr><td><code>AgentFactory</code></td><td>Agent builder</td><td>Always</td></tr>
+<tr><td><code>AgentExecutionListener</code></td><td>DB persistence listener</td><td>Always</td></tr>
+<tr><td><code>NexusObservabilityListener</code></td><td>Langfuse listener</td><td>Langfuse properties present</td></tr>
+<tr><td><code>NexusStoreProvider</code></td><td>DB store facade</td><td>Always</td></tr>
+<tr><td><code>OracleCheckpointSaver</code></td><td>Checkpoint persistence</td><td>DataSource configured</td></tr>
+<tr><td><code>List&lt;SafetySetting&gt;</code></td><td>Gemini safety settings</td><td>Always</td></tr>
+</tbody>
+</table>
+
+<hr />
+
+<h1>Safety Settings</h1>
+
+<p>Nexus-AI configures all Gemini safety categories by default:</p>
+
+<table>
+<tbody>
+<tr><th>Category</th><th>Description</th></tr>
+<tr><td><code>HARM_CATEGORY_HARASSMENT</code></td><td>Harassment content</td></tr>
+<tr><td><code>HARM_CATEGORY_HATE_SPEECH</code></td><td>Hate speech</td></tr>
+<tr><td><code>HARM_CATEGORY_SEXUALLY_EXPLICIT</code></td><td>Sexually explicit content</td></tr>
+<tr><td><code>HARM_CATEGORY_DANGEROUS_CONTENT</code></td><td>Dangerous content</td></tr>
+<tr><td><code>HARM_CATEGORY_CIVIC_INTEGRITY</code></td><td>Civic integrity</td></tr>
+</tbody>
+</table>
+
+<hr />
+
+<h1>Configuration Reference</h1>
+
+<h2>Complete YAML Reference</h2>
+
+<ac:structured-macro ac:name="code">
+<ac:parameter ac:name="language">yaml</ac:parameter>
+<ac:parameter ac:name="title">Full application.yml Reference</ac:parameter>
+<ac:parameter ac:name="collapse">true</ac:parameter>
+<ac:plain-text-body><![CDATA[clm:
+  nexus:
+    ai:
+      # Master switch
+      enabled: true
+
+      # Proxy
+      proxy: <proxy-url>
+
+      # Azure AD Authentication
+      azure:
+        tenant-id: <tenant-id>
+        client-id: <client-id>
+        client-secret: <client-secret>
+        scope: <scope>
+        grant-type: client_credentials
+        client_assertion_type: urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+        thumbprint: <cert-thumbprint>
+        db_key_protect_key_name: <key-name>
+        db_key_protect_key_passphrase: <passphrase>
+
+      # Workload Identity Federation
+      wif:
+        wif_provider: <path-to-wif-provider.json>
+        wif_keystore: <path-to-wif-keystore.json>
+
+      # Google / Gemini
+      google:
+        project-id: <gcp-project-id>
+        location: us-central1
+        transport: GRPC
+        chat-model-name: gemini-1.5-pro-preview-0409
+        output-tokens: 2048
+        temperature: 0.2
+        top-k: 40
+        top-p: 0.95
+        credentials:
+          project-number: <gcp-project-number>
+          location: global
+          workload-identity-pool-id: <pool-id>
+          workload-identity-provider-id: <provider-id>
+          service-account-email: <sa>@<project>.iam.gserviceaccount.com
+          subject-token-type: urn:ietf:params:oauth:token-type:jwt]]></ac:plain-text-body>
+</ac:structured-macro>
+
+<h2>Properties Classes</h2>
+
+<table>
+<tbody>
+<tr><th>Class</th><th>Prefix</th><th>Purpose</th></tr>
+<tr><td><code>NexusAiProperties</code></td><td><code>clm.nexus.ai</code></td><td>Master switch, proxy</td></tr>
+<tr><td><code>GoogleProperties</code></td><td><code>clm.nexus.ai.google</code></td><td>GCP project, model params</td></tr>
+<tr><td><code>AzureAdProperties</code></td><td><code>clm.nexus.ai.azure</code></td><td>Azure AD token config</td></tr>
+<tr><td><code>KeystoreProperties</code></td><td>&mdash;</td><td>Keystore paths</td></tr>
+<tr><td><code>WorkloadIdentityFederationProperties</code></td><td><code>clm.nexus.ai.wif</code></td><td>WIF config</td></tr>
+<tr><td><code>LangfuseProperties</code></td><td>&mdash;</td><td>Langfuse connection settings</td></tr>
+</tbody>
+</table>
+
+<h2>Package Structure</h2>
+
+<table>
+<tbody>
+<tr><th>Package</th><th>Contents</th></tr>
+<tr><td><code>c.d.c.k.a.nexus.agent</code></td><td><code>AgentFactory</code>, <code>AgentSpec</code></td></tr>
+<tr><td><code>c.d.c.k.a.nexus.auth</code></td><td><code>AzureTokenService</code>, <code>CredentialManager</code>, <code>CredentialUtils</code></td></tr>
+<tr><td><code>c.d.c.k.a.nexus.chat.model</code></td><td><code>NexusGoogleGenAiChatModel</code>, <code>NexusGoogleGenAiStreamingChatModel</code>, model factories</td></tr>
+<tr><td><code>c.d.c.k.a.nexus.checkpoint</code></td><td><code>OracleCheckpointSaver</code>, <code>CheckpointSerializer</code></td></tr>
+<tr><td><code>c.d.c.k.a.nexus.config</code></td><td><code>NexusAutoConfiguration</code>, all properties classes</td></tr>
+<tr><td><code>c.d.c.k.a.nexus.engine</code></td><td><code>WorkflowEngine</code></td></tr>
+<tr><td><code>c.d.c.k.a.nexus.listener</code></td><td><code>AgentExecutionListener</code>, <code>NexusObservabilityListener</code></td></tr>
+<tr><td><code>c.d.c.k.a.nexus.store</code></td><td><code>PromptStore</code>, <code>NexusAgentExecutionStore</code>, <code>WorkflowStore</code>, <code>NexusStoreProvider</code></td></tr>
+</tbody>
+</table>
+
+</ac:layout-cell>
+</ac:layout-section>
+</ac:layout>
