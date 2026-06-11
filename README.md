@@ -195,7 +195,204 @@ The renderer produces formatted console output:
 | `WARNING` | Quality problem that should be fixed (e.g., vague language) |
 | `INFO` | Improvement opportunity (e.g., add more imperative verbs) |
 
+## Rule Configuration
+
+By default the analyzer uses built-in keyword lists. The builder lets you customize those lists, remap rule severities, suppress noisy issues, and filter known-good issues via a baseline snapshot — all without touching the analyzer code.
+
+### Quick start
+
+```java
+import com.eainde.prompt.quality.PromptQualityAnalyzer;
+import com.eainde.prompt.quality.config.Lexicon;
+import com.eainde.prompt.quality.model.Severity;
+
+import java.nio.file.Path;
+
+var analyzer = PromptQualityAnalyzer.builder()
+    .lexicon(Lexicon.defaults()
+        .extend("clarity.vague-words", "leverage")
+        .mergeFrom(Path.of("prompt-lint.yaml")))
+    .severityOverride("OUT-001", Severity.WARNING)
+    .suppress("CLR-007")
+    .suppress("TOK-001", "legacy prompt, cleanup ticket PL-42")
+    .baseline(Path.of("prompt-lint-baseline.json"))
+    .build();
+```
+
+### Lexicon category reference
+
+All 28 built-in keyword categories, the analyzer dimension each feeds, and the rule(s) they influence:
+
+| Category | Analyzer dimension | What it detects |
+|---|---|---|
+| `clarity.role-starters` | CLARITY | role definition present (CLR-001) |
+| `clarity.task-markers` | CLARITY | explicit task statement (CLR-002, CLR-006) |
+| `clarity.imperative-verbs` | CLARITY | direct command verbs (CLR-003, CLR-009) |
+| `clarity.vague-words` | CLARITY | vague/hedging language (CLR-004) |
+| `clarity.ambiguous-pronouns` | CLARITY | ambiguous pronoun references (CLR-008) |
+| `clarity.ambiguous-quantifiers` | CLARITY | imprecise quantifiers (CLR-007) |
+| `clarity.output-section-markers` | CLARITY | output format section present (CLR-005) |
+| `constraints.empty-handling` | CONSTRAINT_COVERAGE | empty/missing input instructions (CON-001) |
+| `constraints.uncertainty-handling` | CONSTRAINT_COVERAGE | when-in-doubt guidance (CON-002) |
+| `constraints.negative-instructions` | CONSTRAINT_COVERAGE | what-not-to-do instructions (CON-003) |
+| `constraints.default-value-markers` | CONSTRAINT_COVERAGE | default values for optional fields (CON-006) |
+| `constraints.input-size-handling` | CONSTRAINT_COVERAGE | truncation/pagination for large inputs (CON-007) |
+| `constraints.field-constraints` | CONSTRAINT_COVERAGE | field nullability and valid values (CON-004) |
+| `consistency.formal-markers` | CONSISTENCY | formal register words for tone-shift detection (CNS-007) |
+| `consistency.informal-markers` | CONSISTENCY | informal register words for tone-shift detection (CNS-007) |
+| `groundedness.grounding-instructions` | GROUNDEDNESS | source-only grounding phrases (GRD-001) |
+| `groundedness.external-knowledge-prohibitions` | GROUNDEDNESS | bans on external knowledge (GRD-002) |
+| `groundedness.citation-requirements` | GROUNDEDNESS | document/page citation phrases (GRD-003) |
+| `groundedness.fabrication-prohibitions` | GROUNDEDNESS | never-fabricate/invent phrases (GRD-004) |
+| `groundedness.conflicting-grounding-phrases` | GROUNDEDNESS | contradictory use-your-knowledge phrases (GRD-007) |
+| `groundedness.document-boundary-markers` | GROUNDEDNESS | document delimiter markers in user prompt (GRD-005) |
+| `injection.defensive-instructions` | INJECTION_RESISTANCE | treat-document-as-data phrases (INJ-001) |
+| `injection.role-boundaries` | INJECTION_RESISTANCE | role-lock / sole-task phrases (INJ-002) |
+| `injection.risky-echo-patterns` | INJECTION_RESISTANCE | repeat-back / echo-input patterns (INJ-005) |
+| `injection.privilege-escalation-patterns` | INJECTION_RESISTANCE | user-claims-admin / grant-access patterns (INJ-006) |
+| `specificity.vague-verbs` | SPECIFICITY | vague action verbs (SPC-008) |
+| `specificity.open-ended-phrases` | SPECIFICITY | open-ended freedom phrases (SPC-006) |
+| `token-efficiency.filler-phrases` | TOKEN_EFFICIENCY | verbose filler phrases (TOK-004) |
+
+### Lexicon file formats
+
+`mergeFrom` and `from` accept `.json`, `.properties`, `.yaml`, or `.yml` files.
+
+**JSON** — array value = replace the full list; object value = named ops:
+
+```json
+{
+  "clarity.vague-words": ["try to", "if possible", "leverage"],
+  "groundedness.grounding-instructions": {
+    "extend": ["as stated in the document"],
+    "remove": ["verbatim"]
+  },
+  "token-efficiency.filler-phrases": {
+    "replace": ["please note that", "keep in mind that"]
+  }
+}
+```
+
+**Properties** — key format `<category>.<op>=<comma-separated values>`:
+
+```properties
+clarity.vague-words.extend=leverage,synergize
+groundedness.fabrication-prohibitions.remove=never hallucinate
+token-efficiency.filler-phrases.replace=please note that,keep in mind that
+```
+
+> **Note:** properties format splits on commas after trimming — it cannot express keywords that contain commas or where leading/trailing spaces are significant (e.g. the default `" it "` pronoun entries). Use JSON or YAML for those.
+
+**YAML** — same shape as JSON:
+
+```yaml
+clarity.vague-words:
+  - try to
+  - if possible
+  - leverage
+groundedness.grounding-instructions:
+  extend:
+    - as stated in the document
+  remove:
+    - verbatim
+```
+
+#### Loading modes
+
+| Method | Semantics |
+|---|---|
+| `Lexicon.defaults()` | Starts from all 28 built-in keyword lists; no file required. |
+| `Lexicon.defaults().mergeFrom(path)` | Applies file ops (extend/remove/replace) on top of the built-in lists; categories not in the file keep their defaults. |
+| `Lexicon.from(path)` / `Lexicon.from(path, Strictness)` | External-only: starts from an empty lexicon (all 28 categories present, zero keywords); the file provides all keywords. Categories the file omits stay empty — their checks match nothing. Warns on stderr by default; pass `Strictness.SILENT` to suppress. |
+
+> **Matching semantics:** keywords are matched as lowercase substring `contains`. Leading and trailing spaces are significant — the default `" it "` entry enforces a word boundary. Properties format trims each value after splitting on `,`, so space-significant keywords and comma-containing keywords must use JSON or YAML.
+
+### Suppression and baseline
+
+**Suppression** hides issues from reports and assertions. **Scores are never affected** — a suppressed issue still costs the same points. This is intentional: suppression is for noise management, not threshold gaming.
+
+```java
+// Suppress with optional reason (documentation only — not stored):
+.suppress("CLR-007")
+.suppress("TOK-001", "legacy prompt, cleanup ticket PL-42")
+```
+
+**Baseline** filters issues that were already present when the baseline was captured, so only *new* regressions surface. Scores are likewise unaffected.
+
+Baseline workflow:
+
+```java
+// 1. Capture a snapshot after an initial analysis pass:
+PromptQualityReport report = analyzer.analyze(myPrompt);
+Baseline.fromReport(report).writeTo(Path.of("prompt-lint-baseline.json"));
+
+// 2. Commit the file to version control.
+
+// 3. Configure the analyzer to use it:
+var analyzer = PromptQualityAnalyzer.builder()
+    .baseline(Path.of("prompt-lint-baseline.json"))
+    .build();
+```
+
+The baseline file is plain JSON with `agentName:ruleId` fingerprints, sorted for stable diffs:
+
+```json
+{
+  "version": 1,
+  "entries": [
+    "my-extraction-agent:CLR-007",
+    "my-extraction-agent:TOK-001"
+  ]
+}
+```
+
+A missing or unreadable baseline file throws at build time (fail-fast).
+
+### YAML optional dependency
+
+YAML lexicon files (`.yaml` / `.yml`) require an optional dependency not included by default:
+
+```xml
+<dependency>
+    <groupId>com.fasterxml.jackson.dataformat</groupId>
+    <artifactId>jackson-dataformat-yaml</artifactId>
+    <version>${jackson.version}</version>
+</dependency>
+```
+
+If the dependency is absent and a `.yaml` file is loaded, the loader throws `IllegalStateException` with a clear message. JSON and `.properties` files have no additional dependencies.
+
+### Plugin analyzers and custom categories
+
+Implement `LexiconAware` to declare custom keyword categories in a plugin analyzer. The builder discovers plugins via `ServiceLoader` and registers their categories before the lexicon is resolved.
+
+```java
+@DimensionMeta(name = "MY_CHECK", defaultWeight = 0.10, description = "Custom safety check")
+public class MyAnalyzer implements PromptDimensionAnalyzer, LexiconAware {
+
+    @Override
+    public Map<String, List<String>> declaredCategories() {
+        return Map.of("my.safety-words", List.of("unsafe", "restricted"));
+    }
+
+    @Override
+    public void setLexicon(Lexicon lexicon) {
+        // called once at build time with the fully-resolved lexicon
+    }
+    // ...
+}
+```
+
+To configure a plugin's categories from a lexicon file, call `withCategory` *before* `mergeFrom` so the category exists when the file ops are applied:
+
+```java
+Lexicon.defaults()
+    .withCategory("my.safety-words", List.of("unsafe", "restricted"))
+    .mergeFrom(Path.of("prompt-lint.yaml"));
+```
+
 ## Requirements
 
 - Java 17+
 - No runtime dependencies beyond Jackson (for JSON validation in `OutputContractAnalyzer`)
+- `jackson-dataformat-yaml` optional (YAML lexicon files only)

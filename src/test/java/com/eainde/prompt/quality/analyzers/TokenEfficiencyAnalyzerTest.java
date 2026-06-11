@@ -213,4 +213,17 @@ class TokenEfficiencyAnalyzerTest {
         DimensionResult result = analyzer.analyze(prompt(system));
         assertFalse(result.issues().stream().anyMatch(i -> "TOK-006".equals(i.ruleId())));
     }
+
+    @Test
+    @DisplayName("custom_lexicon_changes_detection: extended filler-phrases keyword triggers TOK-004")
+    void custom_lexicon_changes_detection() {
+        com.eainde.prompt.quality.config.Lexicon lex =
+                com.eainde.prompt.quality.config.Lexicon.defaults()
+                        .extend("token-efficiency.filler-phrases", "as you already know");
+        TokenEfficiencyAnalyzer custom = new TokenEfficiencyAnalyzer(lex);
+        // prompt contains the custom filler phrase (and is long enough to pass TOK-002)
+        String system = "A".repeat(500) + " As you already know this is redundant text here.";
+        DimensionResult result = custom.analyze(prompt(system));
+        assertTrue(result.issues().stream().anyMatch(i -> "TOK-004".equals(i.ruleId())));
+    }
 }

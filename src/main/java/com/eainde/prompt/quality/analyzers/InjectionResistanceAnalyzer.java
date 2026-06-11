@@ -1,5 +1,6 @@
 package com.eainde.prompt.quality.analyzers;
 
+import com.eainde.prompt.quality.config.Lexicon;
 import com.eainde.prompt.quality.fix.*;
 import com.eainde.prompt.quality.model.DimensionResult;
 import com.eainde.prompt.quality.model.PromptUnderTest;
@@ -14,47 +15,15 @@ import java.util.List;
  */
 public class InjectionResistanceAnalyzer implements PromptDimensionAnalyzer, FixGenerator {
 
-    /**
-     * NEEDED in prompt: defensive instructions to ignore malicious content in documents.
-     * If NONE found → WARNING INJ-001 (documents could override agent behavior).
-     * If ANY found → +1 point.
-     */
-    private static final List<String> DEFENSIVE_INSTRUCTIONS = List.of(
-            "ignore any instructions", "ignore instructions in the document",
-            "ignore commands in the", "do not follow instructions in",
-            "treat the document as data", "document content is data only"
-    );
+    private final Lexicon lexicon;
 
-    /**
-     * NEEDED in prompt: role boundary phrases that restrict agent to a single task.
-     * If NONE found → INFO INJ-002 (weak boundaries make injection easier).
-     * If 1 found → half point. If 2+ → full point.
-     */
-    private static final List<String> ROLE_BOUNDARIES = List.of(
-            "you are a", "your sole task", "your only task",
-            "you must only", "your purpose is"
-    );
+    public InjectionResistanceAnalyzer() {
+        this(Lexicon.defaults());
+    }
 
-    /**
-     * NOT NEEDED in prompt: echo/repeat patterns that can leak system prompts.
-     * If ANY found → WARNING INJ-005 (attacker can trick LLM into revealing instructions).
-     * Not scored — detection only.
-     */
-    private static final List<String> RISKY_ECHO_PATTERNS = List.of(
-            "repeat back", "echo the", "say back",
-            "repeat the user", "mirror the input"
-    );
-
-    /**
-     * NOT NEEDED in prompt: patterns granting access based on user-claimed identity.
-     * If ANY found → CRITICAL INJ-006 (user can claim admin to bypass restrictions).
-     * Not scored — detection only. Always remove these patterns.
-     */
-    private static final List<String> PRIVILEGE_ESCALATION_PATTERNS = List.of(
-            "if the user says they are", "if user claims to be",
-            "grant access", "elevate permission", "elevate privileges",
-            "grant privileges", "promote to admin"
-    );
+    public InjectionResistanceAnalyzer(Lexicon lexicon) {
+        this.lexicon = lexicon;
+    }
 
     @Override
     public String dimensionName() {
@@ -71,7 +40,7 @@ public class InjectionResistanceAnalyzer implements PromptDimensionAnalyzer, Fix
         String systemLower = prompt.systemPrompt().toLowerCase();
 
         // Check 1: Has defensive instructions
-        boolean hasDefensive = DEFENSIVE_INSTRUCTIONS.stream()
+        boolean hasDefensive = lexicon.keywords("injection.defensive-instructions").stream()
                 .anyMatch(systemLower::contains);
         if (hasDefensive) {
             totalPoints += 1;
@@ -85,7 +54,7 @@ public class InjectionResistanceAnalyzer implements PromptDimensionAnalyzer, Fix
         }
 
         // Check 2: Clear role boundaries
-        long roleBoundaryCount = ROLE_BOUNDARIES.stream()
+        long roleBoundaryCount = lexicon.keywords("injection.role-boundaries").stream()
                 .filter(systemLower::contains)
                 .count();
         if (roleBoundaryCount >= 2) {
@@ -141,7 +110,7 @@ public class InjectionResistanceAnalyzer implements PromptDimensionAnalyzer, Fix
 
         // Check 5: Risky echo patterns (INJ-005)
         String combinedLower = prompt.combinedPrompt().toLowerCase();
-        boolean hasRiskyEcho = RISKY_ECHO_PATTERNS.stream().anyMatch(combinedLower::contains);
+        boolean hasRiskyEcho = lexicon.keywords("injection.risky-echo-patterns").stream().anyMatch(combinedLower::contains);
         if (hasRiskyEcho) {
             issues.add(QualityIssue.warning("INJECTION_RESISTANCE",
                     "Risky echo pattern detected. Instructions like 'repeat back' or "
@@ -150,7 +119,7 @@ public class InjectionResistanceAnalyzer implements PromptDimensionAnalyzer, Fix
         }
 
         // Check 6: Privilege escalation patterns (INJ-006)
-        boolean hasPrivEscalation = PRIVILEGE_ESCALATION_PATTERNS.stream()
+        boolean hasPrivEscalation = lexicon.keywords("injection.privilege-escalation-patterns").stream()
                 .anyMatch(combinedLower::contains);
         if (hasPrivEscalation) {
             issues.add(QualityIssue.critical("INJECTION_RESISTANCE",

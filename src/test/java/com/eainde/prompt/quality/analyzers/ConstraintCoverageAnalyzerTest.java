@@ -209,4 +209,17 @@ class ConstraintCoverageAnalyzerTest {
                 "Extract names. If input exceeds 4000 tokens, truncate."));
         assertFalse(result.issues().stream().anyMatch(i -> "CON-007".equals(i.ruleId())));
     }
+
+    @Test
+    @DisplayName("custom_lexicon_changes_detection: extended empty-handling keyword suppresses CON-001")
+    void custom_lexicon_changes_detection() {
+        com.eainde.prompt.quality.config.Lexicon lex =
+                com.eainde.prompt.quality.config.Lexicon.defaults()
+                        .extend("constraints.empty-handling", "on empty input");
+        ConstraintCoverageAnalyzer custom = new ConstraintCoverageAnalyzer(lex);
+        // prompt contains ONLY the new custom keyword (no default empty-handling phrase)
+        String system = "On empty input return nothing.";
+        DimensionResult result = custom.analyze(prompt(system));
+        assertFalse(result.issues().stream().anyMatch(i -> "CON-001".equals(i.ruleId())));
+    }
 }

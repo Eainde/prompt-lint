@@ -208,4 +208,17 @@ class SpecificityAnalyzerTest {
         assertFalse(result.issues().stream().anyMatch(
                 i -> "SPC-001".equals(i.ruleId()) && i.severity() == Severity.WARNING));
     }
+
+    @Test
+    @DisplayName("custom_lexicon_changes_detection: extended open-ended-phrases keyword triggers SPC-006")
+    void custom_lexicon_changes_detection() {
+        com.eainde.prompt.quality.config.Lexicon lex =
+                com.eainde.prompt.quality.config.Lexicon.defaults()
+                        .extend("specificity.open-ended-phrases", "wing it");
+        SpecificityAnalyzer custom = new SpecificityAnalyzer(lex);
+        // prompt contains only the custom open-ended phrase
+        String system = "When uncertain, just wing it and see what happens.";
+        DimensionResult result = custom.analyze(prompt(system));
+        assertTrue(result.issues().stream().anyMatch(i -> "SPC-006".equals(i.ruleId())));
+    }
 }

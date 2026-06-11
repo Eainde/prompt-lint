@@ -1,5 +1,6 @@
 package com.eainde.prompt.quality.analyzers;
 
+import com.eainde.prompt.quality.config.Lexicon;
 import com.eainde.prompt.quality.fix.*;
 import com.eainde.prompt.quality.model.DimensionResult;
 import com.eainde.prompt.quality.model.PromptUnderTest;
@@ -32,18 +33,15 @@ public class TokenEfficiencyAnalyzer implements PromptDimensionAnalyzer, FixGene
      */
     private static final int MAX_USER_TEMPLATE_TOKENS = 500;
 
-    /**
-     * NOT NEEDED in prompt: filler phrases that waste tokens without adding information.
-     * If ANY found → INFO TOK-004 (remove them to save tokens).
-     * If NONE found → +1 point. Auto-fixable via FixGenerator (TOK-004 REPLACE fix).
-     */
-    private static final List<String> FILLER_PHRASES = List.of(
-            "please note that", "it is important to remember",
-            "it should be noted that", "keep in mind that",
-            "as mentioned earlier", "as stated above",
-            "in other words", "that is to say",
-            "needless to say", "it goes without saying"
-    );
+    private final Lexicon lexicon;
+
+    public TokenEfficiencyAnalyzer() {
+        this(Lexicon.defaults());
+    }
+
+    public TokenEfficiencyAnalyzer(Lexicon lexicon) {
+        this.lexicon = lexicon;
+    }
 
     @Override
     public String dimensionName() {
@@ -87,7 +85,7 @@ public class TokenEfficiencyAnalyzer implements PromptDimensionAnalyzer, FixGene
 
         // Check 3: No filler phrases
         String lower = prompt.combinedPrompt().toLowerCase();
-        List<String> foundFiller = FILLER_PHRASES.stream()
+        List<String> foundFiller = lexicon.keywords("token-efficiency.filler-phrases").stream()
                 .filter(lower::contains)
                 .toList();
         if (foundFiller.isEmpty()) {
@@ -152,7 +150,7 @@ public class TokenEfficiencyAnalyzer implements PromptDimensionAnalyzer, FixGene
         for (QualityIssue issue : result.issues()) {
             if ("TOK-004".equals(issue.ruleId())) {
                 String system = prompt.systemPrompt();
-                for (String filler : FILLER_PHRASES) {
+                for (String filler : lexicon.keywords("token-efficiency.filler-phrases")) {
                     String lower = system.toLowerCase();
                     int idx = lower.indexOf(filler);
                     if (idx >= 0) {

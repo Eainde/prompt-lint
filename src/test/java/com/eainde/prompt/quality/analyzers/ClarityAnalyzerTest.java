@@ -1,5 +1,6 @@
 package com.eainde.prompt.quality.analyzers;
 
+import com.eainde.prompt.quality.config.Lexicon;
 import com.eainde.prompt.quality.model.AgentTypeProfile;
 import com.eainde.prompt.quality.model.DimensionResult;
 import com.eainde.prompt.quality.model.PromptUnderTest;
@@ -9,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Set;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ClarityAnalyzerTest {
@@ -282,5 +284,30 @@ class ClarityAnalyzerTest {
                 """;
         DimensionResult result = analyzer.analyze(prompt(system, "{{input}}"));
         assertFalse(result.issues().stream().anyMatch(i -> "CLR-009".equals(i.ruleId())));
+    }
+
+    @Test
+    void custom_lexicon_changes_vague_word_detection() {
+        var lex = Lexicon.defaults()
+                .extend("clarity.vague-words", "leverage");
+        var analyzer = new ClarityAnalyzer(lex);
+        var prompt = new PromptUnderTest("t",
+                "You are a tester. Your task is to extract data. Leverage the tools."
+                        + " Extract, classify, return. ## Output Format: json",
+                "{{sourceText}}", Set.of("sourceText"), "out",
+                AgentTypeProfile.DEFAULT);
+        var result = analyzer.analyze(prompt);
+        assertThat(result.issues()).anyMatch(i -> i.ruleId().equals("CLR-004")
+                && i.message().contains("leverage"));
+    }
+
+    @Test
+    void no_arg_constructor_uses_defaults() {
+        var result = new ClarityAnalyzer().analyze(new PromptUnderTest("t",
+                "You are a tester. Your task is to extract. Try to be good."
+                        + " Extract, classify, return. ## Output Format: json",
+                "{{sourceText}}", Set.of("sourceText"), "out",
+                AgentTypeProfile.DEFAULT));
+        assertThat(result.issues()).anyMatch(i -> i.ruleId().equals("CLR-004"));
     }
 }

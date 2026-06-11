@@ -1,5 +1,6 @@
 package com.eainde.prompt.quality.analyzers;
 
+import com.eainde.prompt.quality.config.Lexicon;
 import com.eainde.prompt.quality.model.DimensionResult;
 import com.eainde.prompt.quality.model.PromptUnderTest;
 import com.eainde.prompt.quality.model.QualityIssue;
@@ -31,28 +32,21 @@ public class ConsistencyAnalyzer implements PromptDimensionAnalyzer {
             Pattern.compile("\\{\\{(\\w+)\\}\\}");
 
     /**
-     * NOT NEEDED (mixed with informal): formal language markers.
-     * If 2+ formal AND 2+ informal markers found → INFO CNS-007 (tone inconsistency).
-     * Using only formal OR only informal is fine.
-     */
-    private static final List<String> FORMAL_MARKERS = List.of(
-            "shall", "hereby", "therefore", "henceforth", "pursuant"
-    );
-
-    /**
-     * NOT NEEDED (mixed with formal): informal language markers.
-     * See FORMAL_MARKERS — only flagged when BOTH formal and informal coexist.
-     */
-    private static final List<String> INFORMAL_MARKERS = List.of(
-            "just", "go ahead", "grab", "stuff", "cool", "okay", "gonna"
-    );
-
-    /**
      * NOT NEEDED: forward references to later steps ("see step 5" inside step 2).
      * If step N references step M where M &gt; N → INFO CNS-008 (confusing ordering).
      */
     private static final Pattern STEP_REF_PATTERN =
             Pattern.compile("(?i)step\\s+(\\d+)");
+
+    private final Lexicon lexicon;
+
+    public ConsistencyAnalyzer() {
+        this(Lexicon.defaults());
+    }
+
+    public ConsistencyAnalyzer(Lexicon lexicon) {
+        this.lexicon = lexicon;
+    }
 
     @Override
     public String dimensionName() {
@@ -154,8 +148,8 @@ public class ConsistencyAnalyzer implements PromptDimensionAnalyzer {
         totalPoints += hasContradiction ? 0 : 1;
 
         // Check 5: Tone/voice shifts (CNS-007)
-        long formalCount = FORMAL_MARKERS.stream().filter(lower::contains).count();
-        long informalCount = INFORMAL_MARKERS.stream().filter(lower::contains).count();
+        long formalCount = lexicon.keywords("consistency.formal-markers").stream().filter(lower::contains).count();
+        long informalCount = lexicon.keywords("consistency.informal-markers").stream().filter(lower::contains).count();
         if (formalCount >= 2 && informalCount >= 2) {
             issues.add(QualityIssue.info("CONSISTENCY",
                     "Tone/voice shift detected: mixing formal and informal language.",

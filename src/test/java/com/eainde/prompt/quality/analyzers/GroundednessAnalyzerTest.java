@@ -217,4 +217,17 @@ class GroundednessAnalyzerTest {
                 "--- document ---\n{{sourceText}}\n--- end ---", Set.of("sourceText")));
         assertFalse(result.issues().stream().anyMatch(i -> "GRD-007".equals(i.ruleId())));
     }
+
+    @Test
+    @DisplayName("custom_lexicon_changes_detection: extended grounding-instructions keyword suppresses GRD-001")
+    void custom_lexicon_changes_detection() {
+        com.eainde.prompt.quality.config.Lexicon lex =
+                com.eainde.prompt.quality.config.Lexicon.defaults()
+                        .extend("groundedness.grounding-instructions", "stick to the provided facts");
+        GroundednessAnalyzer custom = new GroundednessAnalyzer(lex);
+        // No default grounding phrase present, only the custom one
+        String system = "Stick to the provided facts and nothing else.";
+        DimensionResult result = custom.analyze(prompt(system, "{{input}}", Set.of("input")));
+        assertFalse(result.issues().stream().anyMatch(i -> "GRD-001".equals(i.ruleId())));
+    }
 }

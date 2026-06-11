@@ -1,5 +1,6 @@
 package com.eainde.prompt.quality.analyzers;
 
+import com.eainde.prompt.quality.config.Lexicon;
 import com.eainde.prompt.quality.model.DimensionResult;
 import com.eainde.prompt.quality.model.PromptUnderTest;
 import com.eainde.prompt.quality.model.QualityIssue;
@@ -69,24 +70,15 @@ public class SpecificityAnalyzer implements PromptDimensionAnalyzer {
     private static final Pattern NEGATIVE_EXAMPLE_PATTERN =
             Pattern.compile("(?i)(✗|✘|✕|\\binvalid\\b|\\bwrong\\b|\\bdo\\s+not\\b|\\bnever\\b)");
 
-    /**
-     * NOT NEEDED in prompt: vague verbs that don't specify HOW to act.
-     * If 2+ found → WARNING SPC-008 (replace "handle" with specific action).
-     */
-    private static final List<String> VAGUE_VERBS = List.of(
-            "handle", "process", "deal with", "manage", "take care of"
-    );
+    private final Lexicon lexicon;
 
-    /**
-     * NOT NEEDED in prompt: open-ended phrases giving LLM too much freedom.
-     * If ANY found → WARNING SPC-006 (replace with specific instructions).
-     * If NONE found → +1 point.
-     */
-    private static final List<String> OPEN_ENDED_PHRASES = List.of(
-            "be creative", "use your judgment", "do your best",
-            "use common sense", "figure out", "as you see fit",
-            "whatever you think", "at your discretion"
-    );
+    public SpecificityAnalyzer() {
+        this(Lexicon.defaults());
+    }
+
+    public SpecificityAnalyzer(Lexicon lexicon) {
+        this.lexicon = lexicon;
+    }
 
     @Override
     public String dimensionName() {
@@ -195,7 +187,7 @@ public class SpecificityAnalyzer implements PromptDimensionAnalyzer {
         }
 
         // ── Check 6: No open-ended instructions ─────────────────────────
-        List<String> foundOpenEnded = OPEN_ENDED_PHRASES.stream()
+        List<String> foundOpenEnded = lexicon.keywords("specificity.open-ended-phrases").stream()
                 .filter(systemLower::contains)
                 .toList();
         if (foundOpenEnded.isEmpty()) {
@@ -227,7 +219,7 @@ public class SpecificityAnalyzer implements PromptDimensionAnalyzer {
         }
 
         // ── Check 8: Vague verb detection (SPC-008) ─────────────────────
-        List<String> foundVagueVerbs = VAGUE_VERBS.stream()
+        List<String> foundVagueVerbs = lexicon.keywords("specificity.vague-verbs").stream()
                 .filter(systemLower::contains)
                 .toList();
         if (foundVagueVerbs.size() >= 2) {

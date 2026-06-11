@@ -1,5 +1,6 @@
 package com.eainde.prompt.quality.analyzers;
 
+import com.eainde.prompt.quality.config.Lexicon;
 import com.eainde.prompt.quality.fix.*;
 import com.eainde.prompt.quality.model.DimensionResult;
 import com.eainde.prompt.quality.model.PromptUnderTest;
@@ -16,75 +17,15 @@ import java.util.List;
  */
 public class GroundednessAnalyzer implements PromptDimensionAnalyzer, FixGenerator {
 
-    /**
-     * NEEDED in prompt: instructions to use ONLY source document data.
-     * If NONE found → CRITICAL GRD-001 (agent may hallucinate freely).
-     * If ANY found → +1 point. Also used for conflict check with GRD-007.
-     */
-    private static final List<String> GROUNDING_INSTRUCTIONS = List.of(
-            "only from the document", "only the information contained",
-            "only from the provided", "only information from",
-            "must appear in", "must be found in", "verbatim",
-            "exactly as they appear", "exactly as written",
-            "from the source text"
-    );
+    private final Lexicon lexicon;
 
-    /**
-     * NEEDED in prompt: explicit ban on using LLM's prior/training knowledge.
-     * If NONE found → CRITICAL GRD-002 (LLM may fill gaps with training data).
-     * If ANY found → +1 point.
-     */
-    private static final List<String> EXTERNAL_KNOWLEDGE_PROHIBITIONS = List.of(
-            "do not use prior knowledge", "do not use external",
-            "do not use any external", "not use external knowledge",
-            "do not infer", "do not assume", "do not guess",
-            "no external knowledge", "no prior knowledge",
-            "do not use your training", "do not use any knowledge"
-    );
+    public GroundednessAnalyzer() {
+        this(Lexicon.defaults());
+    }
 
-    /**
-     * SHOULD HAVE in prompt: citation/attribution requirements (document name, page number).
-     * If NONE found → WARNING GRD-003 (no traceability to source).
-     * If 1 found → INFO + half point. If 2+ → full point.
-     */
-    private static final List<String> CITATION_REQUIREMENTS = List.of(
-            "documentname", "document name", "pagename", "page number",
-            "pagenumber", "source document", "cite", "citation",
-            "reference the source"
-    );
-
-    /**
-     * NEEDED in prompt: explicit fabrication/hallucination ban.
-     * If NONE found → WARNING GRD-004 (LLM may invent data).
-     * If ANY found → +1 point.
-     */
-    private static final List<String> FABRICATION_PROHIBITIONS = List.of(
-            "never fabricate", "do not fabricate", "never invent",
-            "do not invent", "never hallucinate", "never make up",
-            "do not make up", "never generate names"
-    );
-
-    /**
-     * NOT NEEDED in prompt: phrases that contradict grounding instructions.
-     * If ANY found AND grounding instructions also exist → CRITICAL GRD-007
-     * (contradictory: "only from document" + "fill in gaps" confuses the LLM).
-     */
-    private static final List<String> CONFLICTING_GROUNDING_PHRASES = List.of(
-            "use your knowledge", "use your expertise", "fill in gaps",
-            "fill in any gaps", "supplement with", "infer from context",
-            "use background knowledge", "draw on your training"
-    );
-
-    /**
-     * NEEDED in user prompt: delimiters separating document content from instructions.
-     * If NONE found in user prompt → WARNING GRD-005 (source text not clearly bounded).
-     * If ANY found → +1 point.
-     */
-    private static final List<String> DOCUMENT_BOUNDARY_MARKERS = List.of(
-            "document_start", "document_end", "document text",
-            "--- document", "--- end", "<<<document", ">>>",
-            "begin document", "end document"
-    );
+    public GroundednessAnalyzer(Lexicon lexicon) {
+        this.lexicon = lexicon;
+    }
 
     @Override
     public String dimensionName() {
@@ -103,7 +44,7 @@ public class GroundednessAnalyzer implements PromptDimensionAnalyzer, FixGenerat
         String combinedLower = (prompt.systemPrompt() + "\n" + prompt.userPrompt()).toLowerCase();
 
         // ── Check 1: Grounding instruction ──────────────────────────────
-        boolean hasGrounding = GROUNDING_INSTRUCTIONS.stream()
+        boolean hasGrounding = lexicon.keywords("groundedness.grounding-instructions").stream()
                 .anyMatch(combinedLower::contains);
         if (hasGrounding) {
             totalPoints += 1;
@@ -116,7 +57,7 @@ public class GroundednessAnalyzer implements PromptDimensionAnalyzer, FixGenerat
         }
 
         // ── Check 2: External knowledge prohibition ─────────────────────
-        boolean prohibitsExternal = EXTERNAL_KNOWLEDGE_PROHIBITIONS.stream()
+        boolean prohibitsExternal = lexicon.keywords("groundedness.external-knowledge-prohibitions").stream()
                 .anyMatch(combinedLower::contains);
         if (prohibitsExternal) {
             totalPoints += 1;
@@ -129,7 +70,7 @@ public class GroundednessAnalyzer implements PromptDimensionAnalyzer, FixGenerat
         }
 
         // ── Check 3: Citation requirements ──────────────────────────────
-        long citationCount = CITATION_REQUIREMENTS.stream()
+        long citationCount = lexicon.keywords("groundedness.citation-requirements").stream()
                 .filter(combinedLower::contains)
                 .count();
         if (citationCount >= 2) {
@@ -147,7 +88,7 @@ public class GroundednessAnalyzer implements PromptDimensionAnalyzer, FixGenerat
         }
 
         // ── Check 4: Fabrication prohibition ────────────────────────────
-        boolean prohibitsFabrication = FABRICATION_PROHIBITIONS.stream()
+        boolean prohibitsFabrication = lexicon.keywords("groundedness.fabrication-prohibitions").stream()
                 .anyMatch(combinedLower::contains);
         if (prohibitsFabrication) {
             totalPoints += 1;
@@ -160,7 +101,7 @@ public class GroundednessAnalyzer implements PromptDimensionAnalyzer, FixGenerat
         }
 
         // ── Check 5: Document boundary markers (in user prompt) ─────────
-        boolean hasMarkers = DOCUMENT_BOUNDARY_MARKERS.stream()
+        boolean hasMarkers = lexicon.keywords("groundedness.document-boundary-markers").stream()
                 .anyMatch(userLower::contains);
         if (hasMarkers) {
             totalPoints += 1;
@@ -194,7 +135,7 @@ public class GroundednessAnalyzer implements PromptDimensionAnalyzer, FixGenerat
 
         // ── Check 7: Conflicting grounding scope (GRD-007) ───────────────
         if (hasGrounding) {
-            boolean hasConflict = CONFLICTING_GROUNDING_PHRASES.stream()
+            boolean hasConflict = lexicon.keywords("groundedness.conflicting-grounding-phrases").stream()
                     .anyMatch(combinedLower::contains);
             if (hasConflict) {
                 issues.add(QualityIssue.critical("GROUNDEDNESS",
