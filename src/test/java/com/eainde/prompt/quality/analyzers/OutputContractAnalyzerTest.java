@@ -232,4 +232,52 @@ class OutputContractAnalyzerTest {
         DimensionResult result = analyzer.analyze(promptWithSchema(embeddedSystem, schema.strip()));
         assertFalse(result.issues().stream().anyMatch(i -> "OUT-005".equals(i.ruleId())));
     }
+
+    @Test
+    @DisplayName("OUT-008: schema fields not referenced in prompt")
+    void schemaFieldsNotReferenced() {
+        String schema = """
+                {"type":"object","properties":{"name":{"type":"string"},"confidence":{"type":"number"},"category":{"type":"string"}}}
+                """;
+        // System prompt only mentions "name" — confidence and category are not referenced in instructions
+        String system = "You are a specialist. Extract the name from documents.";
+        DimensionResult result = analyzer.analyze(promptWithSchema(system, schema.strip()));
+        assertTrue(result.issues().stream().anyMatch(i -> "OUT-008".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("OUT-008: no issue when fields referenced")
+    void schemaFieldsReferenced() {
+        String schema = """
+                {"type":"object","properties":{"name":{"type":"string"},"confidence":{"type":"number"}}}
+                """;
+        String system = "You are a specialist. Extract the name and assign a confidence score.\n"
+                + "## Output\n```json\n{\"name\":\"\",\"confidence\":0}\n```";
+        DimensionResult result = analyzer.analyze(promptWithSchema(system, schema.strip()));
+        assertFalse(result.issues().stream().anyMatch(i -> "OUT-008".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("OUT-009: enum values not described in prompt")
+    void enumValuesNotDescribed() {
+        String schema = """
+                {"type":"object","properties":{"status":{"type":"string","enum":["active","inactive","pending"]}}}
+                """;
+        String system = "You are a classifier. Classify the input.\n"
+                + "## Output\n```json\n{\"status\":\"\"}\n```";
+        DimensionResult result = analyzer.analyze(promptWithSchema(system, schema.strip()));
+        assertTrue(result.issues().stream().anyMatch(i -> "OUT-009".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("OUT-009: no issue when enum values described")
+    void enumValuesDescribed() {
+        String schema = """
+                {"type":"object","properties":{"status":{"type":"string","enum":["active","inactive","pending"]}}}
+                """;
+        String system = "You are a classifier. Set status to active when running, inactive when stopped, pending when unknown.\n"
+                + "## Output\n```json\n{\"status\":\"\"}\n```";
+        DimensionResult result = analyzer.analyze(promptWithSchema(system, schema.strip()));
+        assertFalse(result.issues().stream().anyMatch(i -> "OUT-009".equals(i.ruleId())));
+    }
 }

@@ -22,6 +22,14 @@
             <version>2.17.0</version>
         </dependency>
 
+        <!-- Optional: only needed when loading .yaml/.yml lexicon files -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-yaml</artifactId>
+            <version>2.17.0</version>
+            <optional>true</optional>
+        </dependency>
+
         <!-- AssertJ -->
         <dependency>
             <groupId>org.assertj</groupId>

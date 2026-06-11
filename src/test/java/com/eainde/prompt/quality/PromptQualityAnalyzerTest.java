@@ -1,10 +1,13 @@
 package com.eainde.prompt.quality;
 
 import com.eainde.prompt.quality.analyzers.ClarityAnalyzer;
+import com.eainde.prompt.quality.analyzers.PromptDimensionAnalyzer;
 import com.eainde.prompt.quality.analyzers.SpecificityAnalyzer;
 import com.eainde.prompt.quality.api.PromptQualityResult;
 import com.eainde.prompt.quality.model.AgentTypeProfile;
+import com.eainde.prompt.quality.model.DimensionResult;
 import com.eainde.prompt.quality.model.PromptUnderTest;
+import com.eainde.prompt.quality.model.Severity;
 import com.eainde.prompt.quality.report.PromptQualityReport;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -164,5 +167,76 @@ class PromptQualityAnalyzerTest {
         PromptQualityAnalyzer analyzer = PromptQualityAnalyzer.create();
         List<PromptQualityReport> reports = analyzer.analyzeAll(List.of());
         assertTrue(reports.isEmpty());
+    }
+
+    @Test
+    @DisplayName("SeverityCalibrator downgrades CLR-001 to INFO for FORMATTING profile")
+    void severityCalibrationFormattingProfile() {
+        PromptQualityAnalyzer analyzer = PromptQualityAnalyzer.create();
+        // No role definition -> triggers CLR-001 as WARNING normally
+        var prompt = new PromptUnderTest("test",
+                "Format the data as JSON. Return valid JSON. Apply formatting rules.\n## Output\n```json\n{\"data\": []}\n```",
+                "{{input}}", Set.of("input"), "result", AgentTypeProfile.FORMATTING);
+        PromptQualityReport report = analyzer.analyze(prompt);
+        var clr001 = report.allIssues().stream()
+                .filter(i -> "CLR-001".equals(i.ruleId()))
+                .findFirst();
+        assertTrue(clr001.isPresent(), "CLR-001 should be present");
+        assertEquals(Severity.INFO, clr001.get().severity(),
+                "CLR-001 should be downgraded to INFO for FORMATTING profile");
+    }
+
+    @Test
+    @DisplayName("SeverityCalibrator keeps CLR-001 as WARNING for EXTRACTION profile")
+    void severityCalibrationExtractionProfile() {
+        PromptQualityAnalyzer analyzer = PromptQualityAnalyzer.create();
+        var prompt = new PromptUnderTest("test",
+                "Extract data from documents.",
+                "{{input}}", Set.of("input"), "result", AgentTypeProfile.EXTRACTION);
+        PromptQualityReport report = analyzer.analyze(prompt);
+        var clr001 = report.allIssues().stream()
+                .filter(i -> "CLR-001".equals(i.ruleId()))
+                .findFirst();
+        assertTrue(clr001.isPresent());
+        assertEquals(Severity.WARNING, clr001.get().severity(),
+                "CLR-001 should remain WARNING for EXTRACTION profile");
+    }
+
+    @Test
+    @DisplayName("analyze includes suggested fixes for weak prompt")
+    void analyzeIncludesSuggestedFixes() {
+        var prompt = new PromptUnderTest("test",
+                "Extract data from documents.",
+                "{{sourceText}}", Set.of("sourceText"), "result", AgentTypeProfile.EXTRACTION);
+        var report = PromptQualityAnalyzer.create().analyze(prompt);
+        assertFalse(report.suggestedFixes().isEmpty(), "Should have suggested fixes");
+        assertTrue(report.suggestedFixes().stream().allMatch(f -> f.ruleId() != null));
+    }
+
+    @Test
+    @DisplayName("withAdditionalAnalyzers includes custom dimension in report")
+    void withAdditionalAnalyzersIncludedInReport() {
+        var custom = new PromptDimensionAnalyzer() {
+            @Override public String dimensionName() { return "CUSTOM"; }
+            @Override public DimensionResult analyze(PromptUnderTest p) {
+                return new DimensionResult("CUSTOM", 1.0, 1.0, List.of(), List.of());
+            }
+        };
+        var analyzer = PromptQualityAnalyzer.create().withAdditionalAnalyzers(custom);
+        var report = analyzer.analyze(simplePrompt());
+        assertEquals(9, report.dimensionResults().size());
+    }
+
+    @Test
+    @DisplayName("withAdditionalAnalyzers rejects duplicate dimension name")
+    void withAdditionalAnalyzersDuplicateRejected() {
+        var duplicate = new PromptDimensionAnalyzer() {
+            @Override public String dimensionName() { return "CLARITY"; }
+            @Override public DimensionResult analyze(PromptUnderTest p) {
+                return new DimensionResult("CLARITY", 1.0, 1.0, List.of(), List.of());
+            }
+        };
+        assertThrows(IllegalArgumentException.class,
+                () -> PromptQualityAnalyzer.create().withAdditionalAnalyzers(duplicate));
     }
 }

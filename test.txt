@@ -1,0 +1,439 @@
+1. What Makes a Role CSM
+
+  A1 — CSM Definition (line 210)
+
+  ▎ A CSM is a Natural Person (or NNP) with specifically assigned executive powers at the highest level of organisational management and day-to-day authority
+  to act for the client entity.
+
+  C3 — Executive Layer Inclusion (line 272)
+
+  A person qualifies as CSM when either condition is met:
+
+  ┌──────┬──────────────────────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │  #   │                  Condition                   │                                          Example Roles                                           │
+  ├──────┼──────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ (i)  │ Member of executive governing body of client │ Executive Board, Management Board, ExCo, ELT, Geschaeftsfuehrung, Vorstand, Statutair            │
+  │      │  entity                                      │ Bestuurder, Executive Director                                                                   │
+  ├──────┼──────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ (ii) │ Entity-level CEO/President (CEO-equivalent)  │ CEO, CFO, President, Managing Director                                                           │
+  │      │ or CFO                                       │                                                                                                  │
+  └──────┴──────────────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  D1a — Inherent Executive Roles (Protected Threshold ≥ 0.70) (line 412)
+
+  These roles automatically meet the confidence threshold — negative signals cannot drop them below 0.70:
+
+  ┌───────────────────────────────────────────┬───────────────────────────┐
+  │                   Role                    │          Context          │
+  ├───────────────────────────────────────────┼───────────────────────────┤
+  │ CEO / CFO / President                     │ Entity-level              │
+  ├───────────────────────────────────────────┼───────────────────────────┤
+  │ General Partner (GP)                      │ US LP structures          │
+  ├───────────────────────────────────────────┼───────────────────────────┤
+  │ Komplementaer                             │ DE KG structures          │
+  ├───────────────────────────────────────────┼───────────────────────────┤
+  │ Corporate Director / Statutair Bestuurder │ NL / corporate governance │
+  ├───────────────────────────────────────────┼───────────────────────────┤
+  │ Trustee Company with management mandate   │ Trust structures          │
+  └───────────────────────────────────────────┴───────────────────────────┘
+
+  ---
+  2. CSM-Eligible Roles by Entity Type
+
+  ET.CORP — Corporations (AG, SA, Corp, Inc, Plc, NV, SE, KK) (line 479)
+
+  ┌──────────────────────────────────────────────────────────────────┬──────┬────────┐
+  │                               Role                               │ CSM? │  Rule  │
+  ├──────────────────────────────────────────────────────────────────┼──────┼────────┤
+  │ Executive board members                                          │ YES  │ A1, C3 │
+  ├──────────────────────────────────────────────────────────────────┼──────┼────────┤
+  │ Officers with executive authority (CEO, CFO, COO, President, MD) │ YES  │ C3     │
+  ├──────────────────────────────────────────────────────────────────┼──────┼────────┤
+  │ Non-executive / supervisory board members                        │ NO   │ A1B    │
+  ├──────────────────────────────────────────────────────────────────┼──────┼────────┤
+  │ Company Secretary                                                │ NO   │ C4     │
+  ├──────────────────────────────────────────────────────────────────┼──────┼────────┤
+  │ Auditor                                                          │ NO   │ NG1    │
+  └──────────────────────────────────────────────────────────────────┴──────┴────────┘
+
+  ET.LLC — Limited Liability Companies (GmbH, SARL, LLC, BV, Pte Ltd, SRL) (line 491)
+
+  ┌───────────────────────────────────────────────────┬──────┬───────────────────────────┐
+  │                       Role                        │ CSM? │           Rule            │
+  ├───────────────────────────────────────────────────┼──────┼───────────────────────────┤
+  │ Geschaeftsfuehrer / Gerant / Manager / Bestuurder │ YES  │ Executive management      │
+  ├───────────────────────────────────────────────────┼──────┼───────────────────────────┤
+  │ Managing Members / Managing Directors             │ YES  │ Executive mandate         │
+  ├───────────────────────────────────────────────────┼──────┼───────────────────────────┤
+  │ Sole Member who is also Manager                   │ YES  │ Dual role                 │
+  ├───────────────────────────────────────────────────┼──────┼───────────────────────────┤
+  │ Members (manager-managed LLC)                     │ NO   │ Ownership, not governance │
+  ├───────────────────────────────────────────────────┼──────┼───────────────────────────┤
+  │ Non-managing members                              │ NO   │ Ownership ≠ governance    │
+  └───────────────────────────────────────────────────┴──────┴───────────────────────────┘
+
+  ET.LP — Limited Partnerships (KG, KGaA, LP, SCS, SCA, CV) (line 503)
+
+  ┌─────────────────────────────┬──────┬─────────────────────────────────────┐
+  │            Role             │ CSM? │                Rule                 │
+  ├─────────────────────────────┼──────┼─────────────────────────────────────┤
+  │ General Partner (NP)        │ YES  │ Personal liability = governance     │
+  ├─────────────────────────────┼──────┼─────────────────────────────────────┤
+  │ General Partner (NNP)       │ YES  │ FC3-NNP, with NP co-emission        │
+  ├─────────────────────────────┼──────┼─────────────────────────────────────┤
+  │ Komplementaer               │ YES  │ Personal liability partner          │
+  ├─────────────────────────────┼──────┼─────────────────────────────────────┤
+  │ KGaA: Vorstand of GP entity │ YES  │ Executive governance                │
+  ├─────────────────────────────┼──────┼─────────────────────────────────────┤
+  │ KGaA: Aufsichtsrat          │ YES  │ Enhanced governance (KGaA-specific) │
+  ├─────────────────────────────┼──────┼─────────────────────────────────────┤
+  │ Kommanditist                │ NO   │ Passive investor                    │
+  ├─────────────────────────────┼──────┼─────────────────────────────────────┤
+  │ Limited Partners            │ NO   │ No management authority             │
+  └─────────────────────────────┴──────┴─────────────────────────────────────┘
+
+  ET.LLP — Limited Liability Partnerships (LLP, RLLP, Partnerschaft mbB) (line 523)
+
+  ┌─────────────────────────────────┬──────┬───────────────────────────────────────┐
+  │              Role               │ CSM? │                 Rule                  │
+  ├─────────────────────────────────┼──────┼───────────────────────────────────────┤
+  │ Designated Members              │ YES  │ Governance authority                  │
+  ├─────────────────────────────────┼──────┼───────────────────────────────────────┤
+  │ Managing Partners               │ YES  │ Executive mandate                     │
+  ├─────────────────────────────────┼──────┼───────────────────────────────────────┤
+  │ Partners with executive mandate │ YES  │ Must be evidenced                     │
+  ├─────────────────────────────────┼──────┼───────────────────────────────────────┤
+  │ Salaried / Fixed-share Partners │ NO   │ Unless governance authority evidenced │
+  └─────────────────────────────────┴──────┴───────────────────────────────────────┘
+
+  ET.TRUST — Trusts (Statutory Trust, Business Trust, Unit Trust) (line 535)
+
+  ┌────────────────────────────────────────────┬──────┬────────────────────────────────────────┐
+  │                    Role                    │ CSM? │                  Rule                  │
+  ├────────────────────────────────────────────┼──────┼────────────────────────────────────────┤
+  │ Trustees                                   │ YES  │ Governance of trust assets             │
+  ├────────────────────────────────────────────┼──────┼────────────────────────────────────────┤
+  │ Protectors                                 │ YES  │ Oversight governance                   │
+  ├────────────────────────────────────────────┼──────┼────────────────────────────────────────┤
+  │ Corporate Trustee → its directors/officers │ YES  │ Via look-through                       │
+  ├────────────────────────────────────────────┼──────┼────────────────────────────────────────┤
+  │ Beneficiaries                              │ NO   │ Beneficial interest ≠ governance       │
+  ├────────────────────────────────────────────┼──────┼────────────────────────────────────────┤
+  │ Settlor                                    │ NO   │ Unless also trustee                    │
+  ├────────────────────────────────────────────┼──────┼────────────────────────────────────────┤
+  │ Trust Administrator / Trust Officer        │ NO   │ Unless also director of trustee entity │
+  └────────────────────────────────────────────┴──────┴────────────────────────────────────────┘
+
+  ---
+  3. What Makes a Role NON-CSM
+
+  A1B — KOS Negative Guardrail (NON-NEGOTIABLE) (line 56)
+
+  A person must be excluded if the only evidence is:
+
+  ┌──────────────────────────────────────────────────┬───────────────┐
+  │                  Evidence Type                   │    Result     │
+  ├──────────────────────────────────────────────────┼───────────────┤
+  │ Supervisory Board / NED / Independent Director   │ isCsm = false │
+  ├──────────────────────────────────────────────────┼───────────────┤
+  │ Ownership / PSC / UBO / IBO / Investor / Sponsor │ isCsm = false │
+  ├──────────────────────────────────────────────────┼───────────────┤
+  │ Advisory / Consultative roles                    │ isCsm = false │
+  ├──────────────────────────────────────────────────┼───────────────┤
+  │ "Former" with no current executive mandate       │ isCsm = false │
+  ├──────────────────────────────────────────────────┼───────────────┤
+  │ Role at parent/holding entity, not client entity │ isCsm = false │
+  └──────────────────────────────────────────────────┴───────────────┘
+
+  ▎ Sole exception: India (CP-IN) — Companies Act 2013 overrides A1B for all directors. (line 66)
+
+  NG1–NG6 — Negative Guardrails (NON-NEGOTIABLE, no override) (line 69)
+
+  ┌──────────┬─────────────────────────────────────────────────────────────────────────────────┬──────┬───────────────────────────────────────────────────┐
+  │    ID    │                                  Role Pattern                                   │ CSM? │                     Exception                     │
+  ├──────────┼─────────────────────────────────────────────────────────────────────────────────┼──────┼───────────────────────────────────────────────────┤
+  │ NG1      │                                                                                 │      │                                                   │
+  │ (line    │ Auditor, Revisionsstelle, Commissaire aux Comptes, Wirtschaftspruefer           │ NO   │ None                                              │
+  │ 74)      │                                                                                 │      │                                                   │
+  ├──────────┼─────────────────────────────────────────────────────────────────────────────────┼──────┼───────────────────────────────────────────────────┤
+  │ NG2      │                                                                                 │      │                                                   │
+  │ (line    │ Registered agent, resident agent, service agent, company service provider       │ NO   │ None                                              │
+  │ 75)      │                                                                                 │      │                                                   │
+  ├──────────┼─────────────────────────────────────────────────────────────────────────────────┼──────┼───────────────────────────────────────────────────┤
+  │ NG3      │                                                                                 │      │                                                   │
+  │ (line    │ Nominee shareholder, custodian, trustee holding shares for others               │ NO   │ Also holds board-level governance role            │
+  │ 76)      │                                                                                 │      │                                                   │
+  ├──────────┼─────────────────────────────────────────────────────────────────────────────────┼──────┼───────────────────────────────────────────────────┤
+  │ NG4      │                                                                                 │      │                                                   │
+  │ (line    │ External lawyer, accountant, tax advisor, consultant                            │ NO   │ None                                              │
+  │ 77)      │                                                                                 │      │                                                   │
+  ├──────────┼─────────────────────────────────────────────────────────────────────────────────┼──────┼───────────────────────────────────────────────────┤
+  │ NG5      │                                                                                 │      │                                                   │
+  │ (line    │ PSC, UBO, ownership-only position                                               │ NO   │ Also holds board-level governance role            │
+  │ 78)      │                                                                                 │      │                                                   │
+  ├──────────┼─────────────────────────────────────────────────────────────────────────────────┼──────┼───────────────────────────────────────────────────┤
+  │ NG6      │ Operational titles without board seat: VP Engineering, Head of Sales, CCO, CRO, │      │ (a) Also listed as board/committee member, OR (b) │
+  │ (line    │  CLO, CTO, CIO, CDO, Head of Finance/HR/IT, Country/Regional/Branch Manager     │ NO   │  country profile explicitly includes the title    │
+  │ 79)      │                                                                                 │      │                                                   │
+  └──────────┴─────────────────────────────────────────────────────────────────────────────────┴──────┴───────────────────────────────────────────────────┘
+
+  FC1–FC6 — Fail-Closed Conditions (line 84)
+
+  ┌─────┬────────────────────────────────────────────────────────────┬───────────────┬──────┐
+  │ ID  │                         Condition                          │    Result     │ Line │
+  ├─────┼────────────────────────────────────────────────────────────┼───────────────┼──────┤
+  │ FC1 │ No recognizable governance role in roleHints               │ isCsm = false │ 87   │
+  ├─────┼────────────────────────────────────────────────────────────┼───────────────┼──────┤
+  │ FC2 │ ALL roles are departed/former                              │ isCsm = false │ 92   │
+  ├─────┼────────────────────────────────────────────────────────────┼───────────────┼──────┤
+  │ FC3 │ Candidate is a company/entity name (non-natural person)    │ isCsm = false │ 106  │
+  ├─────┼────────────────────────────────────────────────────────────┼───────────────┼──────┤
+  │ FC4 │ Single H4-only occurrence + ambiguous role                 │ isCsm = false │ 129  │
+  ├─────┼────────────────────────────────────────────────────────────┼───────────────┼──────┤
+  │ FC5 │ No H1/H2 source + role requires first-source corroboration │ isCsm = false │ 135  │
+  ├─────┼────────────────────────────────────────────────────────────┼───────────────┼──────┤
+  │ FC6 │ Empty roleHints + not found on governance page             │ isCsm = false │ 142  │
+  └─────┴────────────────────────────────────────────────────────────┴───────────────┴──────┘
+
+  ▎ FC3 exception: NNP Executive Body Override (FC3-NNP) — when NNP is an executive governing body (GP, Corporate Director, Managing Member, Corporate Trustee)
+   → isCsm = true. (line 112)
+
+  Other Control Rules That Exclude (lines 255–343)
+
+  ┌──────┬────────────────────────────────────────────────────────────────────────────┬──────┐
+  │ Rule │                              What It Excludes                              │ Line │
+  ├──────┼────────────────────────────────────────────────────────────────────────────┼──────┤
+  │ C4   │ Board secretary WITHOUT board seat                                         │ 284  │
+  ├──────┼────────────────────────────────────────────────────────────────────────────┼──────┤
+  │ C5   │ Alternate/deputy directors (unless voting rights stated)                   │ 288  │
+  ├──────┼────────────────────────────────────────────────────────────────────────────┼──────┤
+  │ C6   │ Prokura/Prokurist (unless also board-level role)                           │ 292  │
+  ├──────┼────────────────────────────────────────────────────────────────────────────┼──────┤
+  │ C9   │ Deceased members                                                           │ 304  │
+  ├──────┼────────────────────────────────────────────────────────────────────────────┼──────┤
+  │ C10  │ All members of entity in liquidation/dormant (except appointed liquidator) │ 308  │
+  ├──────┼────────────────────────────────────────────────────────────────────────────┼──────┤
+  │ C13  │ Significant control alone WITHOUT executive role                           │ 323  │
+  ├──────┼────────────────────────────────────────────────────────────────────────────┼──────┤
+  │ C15  │ Lower govt roles (Deputy Directors, Heads of Divisions, Advisory Boards)   │ 335  │
+  └──────┴────────────────────────────────────────────────────────────────────────────┴──────┘
+
+  ---
+  4. Country-Specific Overrides
+
+  Germany (CP-DE) (line 563)
+
+  ┌──────────────────────────────────────┬──────┬──────┐
+  │                 Role                 │ CSM? │ Line │
+  ├──────────────────────────────────────┼──────┼──────┤
+  │ Vorstand / Vorstandsmitglied         │ YES  │ 566  │
+  ├──────────────────────────────────────┼──────┼──────┤
+  │ Geschaeftsfuehrer (GmbH)             │ YES  │ 567  │
+  ├──────────────────────────────────────┼──────┼──────┤
+  │ Persoenlich haftender Gesellschafter │ YES  │ 568  │
+  ├──────────────────────────────────────┼──────┼──────┤
+  │ Aufsichtsratsmitglied                │ NO   │ 569  │
+  ├──────────────────────────────────────┼──────┼──────┤
+  │ Prokurist / Prokura                  │ NO   │ 570  │
+  ├──────────────────────────────────────┼──────┼──────┤
+  │ Handlungsbevollmaechtigter           │ NO   │ 571  │
+  ├──────────────────────────────────────┼──────┼──────┤
+  │ Stellvertretender Geschaeftsfuehrer  │ NO   │ 573  │
+  └──────────────────────────────────────┴──────┴──────┘
+
+  United Kingdom (CP-GB) (line 585)
+
+  ┌─────────────────────────────────────────────────┬──────┬──────┐
+  │                      Role                       │ CSM? │ Line │
+  ├─────────────────────────────────────────────────┼──────┼──────┤
+  │ Director (executive)                            │ YES  │ 588  │
+  ├─────────────────────────────────────────────────┼──────┼──────┤
+  │ Managing Director                               │ YES  │ 589  │
+  ├─────────────────────────────────────────────────┼──────┼──────┤
+  │ LLP Designated Member                           │ YES  │ 590  │
+  ├─────────────────────────────────────────────────┼──────┼──────┤
+  │ Shadow Director (if evidenced)                  │ YES  │ 593  │
+  ├─────────────────────────────────────────────────┼──────┼──────┤
+  │ CEO, CFO, President                             │ YES  │ 594  │
+  ├─────────────────────────────────────────────────┼──────┼──────┤
+  │ Independent / Non-Executive Director (NED/INED) │ NO   │ 595  │
+  ├─────────────────────────────────────────────────┼──────┼──────┤
+  │ Company Secretary                               │ NO   │ 596  │
+  ├─────────────────────────────────────────────────┼──────┼──────┤
+  │ Other C-Suite without exec-layer mandate        │ NO   │ 600  │
+  └─────────────────────────────────────────────────┴──────┴──────┘
+
+  Singapore (CP-SG) (line 607)
+
+  ┌─────────────────────────────────────────┬──────┬──────┐
+  │                  Role                   │ CSM? │ Line │
+  ├─────────────────────────────────────────┼──────┼──────┤
+  │ ALL Directors                           │ YES  │ 610  │
+  ├─────────────────────────────────────────┼──────┼──────┤
+  │ Nominee Director                        │ YES  │ 611  │
+  ├─────────────────────────────────────────┼──────┼──────┤
+  │ Authorized Representative (foreign co.) │ YES  │ 613  │
+  ├─────────────────────────────────────────┼──────┼──────┤
+  │ Company Secretary                       │ NO   │ 614  │
+  ├─────────────────────────────────────────┼──────┼──────┤
+  │ Auditor                                 │ NO   │ 615  │
+  └─────────────────────────────────────────┴──────┴──────┘
+
+  United States (CP-US) (line 624)
+
+  ┌────────────────────────────────────────────┬──────┬──────┐
+  │                    Role                    │ CSM? │ Line │
+  ├────────────────────────────────────────────┼──────┼──────┤
+  │ CEO, CFO, President                        │ YES  │ 627  │
+  ├────────────────────────────────────────────┼──────┼──────┤
+  │ Director with explicit executive authority │ YES  │ 628  │
+  ├────────────────────────────────────────────┼──────┼──────┤
+  │ Officers (COO, Secretary, Treasurer)       │ YES* │ 630  │
+  ├────────────────────────────────────────────┼──────┼──────┤
+  │ General Partner (LP/LLP)                   │ YES  │ 631  │
+  ├────────────────────────────────────────────┼──────┼──────┤
+  │ Manager of LLC (manager-managed)           │ YES  │ 632  │
+  ├────────────────────────────────────────────┼──────┼──────┤
+  │ Director (independence unknown)            │ NO   │ 629  │
+  ├────────────────────────────────────────────┼──────┼──────┤
+  │ Independent / Non-Executive Director       │ NO   │ 634  │
+  ├────────────────────────────────────────────┼──────┼──────┤
+  │ Other C-Suite without exec mandate         │ NO   │ 639  │
+  └────────────────────────────────────────────┴──────┴──────┘
+
+  *Only when executive-layer mandate evidenced
+
+  Netherlands (CP-NL) (line 667)
+
+  ┌───────────────────────────────────┬──────┬──────┐
+  │               Role                │ CSM? │ Line │
+  ├───────────────────────────────────┼──────┼──────┤
+  │ Bestuurder / Statutair Bestuurder │ YES  │ 670  │
+  ├───────────────────────────────────┼──────┼──────┤
+  │ Directeur (executive)             │ YES  │ 671  │
+  ├───────────────────────────────────┼──────┼──────┤
+  │ Commissaris / RvC member          │ NO   │ 673  │
+  ├───────────────────────────────────┼──────┼──────┤
+  │ Gevolmachtigde                    │ NO   │ 675  │
+  └───────────────────────────────────┴──────┴──────┘
+
+  Hong Kong (CP-HK) (line 652)
+
+  ┌────────────────────────────────┬──────┬──────┐
+  │              Role              │ CSM? │ Line │
+  ├────────────────────────────────┼──────┼──────┤
+  │ Directors                      │ YES  │ 655  │
+  ├────────────────────────────────┼──────┼──────┤
+  │ Managing Director              │ YES  │ 656  │
+  ├────────────────────────────────┼──────┼──────┤
+  │ Shadow Director (if evidenced) │ YES  │ 657  │
+  ├────────────────────────────────┼──────┼──────┤
+  │ Company Secretary              │ NO   │ 658  │
+  ├────────────────────────────────┼──────┼──────┤
+  │ Alternate Director             │ NO   │ 660  │
+  └────────────────────────────────┴──────┴──────┘
+
+  India (CP-IN) — A1B Override (line 684)
+
+  ┌──────────────────────────────────────────────────┬──────┬──────┐
+  │                       Role                       │ CSM? │ Line │
+  ├──────────────────────────────────────────────────┼──────┼──────┤
+  │ ALL Directors (incl. Independent, Non-Executive) │ YES  │ 689  │
+  ├──────────────────────────────────────────────────┼──────┼──────┤
+  │ Managing Director                                │ YES  │ 690  │
+  ├──────────────────────────────────────────────────┼──────┼──────┤
+  │ Whole-time Director                              │ YES  │ 691  │
+  ├──────────────────────────────────────────────────┼──────┼──────┤
+  │ Manager (s.2(53) Companies Act)                  │ YES  │ 692  │
+  ├──────────────────────────────────────────────────┼──────┼──────┤
+  │ CEO / CFO (KMP s.203)                            │ YES  │ 693  │
+  ├──────────────────────────────────────────────────┼──────┼──────┤
+  │ Company Secretary (KMP s.203)                    │ YES  │ 694  │
+  ├──────────────────────────────────────────────────┼──────┼──────┤
+  │ Nominee Director                                 │ YES  │ 695  │
+  ├──────────────────────────────────────────────────┼──────┼──────┤
+  │ Statutory / Cost / Secretarial Auditor           │ NO   │ 696  │
+  └──────────────────────────────────────────────────┴──────┴──────┘
+
+  ---
+  5. Decision Hierarchy (D5) (line 457)
+
+  Precedence order when rules conflict:
+
+  ┌─────────────┬────────────────────────────────────────┬───────────────────────────────────────┐
+  │  Priority   │                  Rule                  │                Effect                 │
+  ├─────────────┼────────────────────────────────────────┼───────────────────────────────────────┤
+  │ 1 (highest) │ A1B KOS Negative Guardrail             │ isCsm = false, overrides all          │
+  ├─────────────┼────────────────────────────────────────┼───────────────────────────────────────┤
+  │ 2           │ NG1–NG6                                │ isCsm = false, overrides scoring      │
+  ├─────────────┼────────────────────────────────────────┼───────────────────────────────────────┤
+  │ 3           │ FC1–FC6                                │ isCsm = false, overrides scoring      │
+  ├─────────────┼────────────────────────────────────────┼───────────────────────────────────────┤
+  │ 4           │ D1a inherent executive role protection │ isCsm = true if protected base ≥ 0.70 │
+  ├─────────────┼────────────────────────────────────────┼───────────────────────────────────────┤
+  │ 5           │ MKF override                           │ isCsm = true if MKF score ≥ 0.55      │
+  ├─────────────┼────────────────────────────────────────┼───────────────────────────────────────┤
+  │ 6           │ Standard scoring                       │ isCsm = true if final_score ≥ 0.70    │
+  ├─────────────┼────────────────────────────────────────┼───────────────────────────────────────┤
+  │ 7           │ Below threshold                        │ isCsm = false                         │
+  └─────────────┴────────────────────────────────────────┴───────────────────────────────────────┘
+
+
+Looking at the classifier prompt, banking/authorized signatories are NOT explicitly listed as "non-CSM" in a single rule. Instead, their exclusion comes from
+   the combination of several rules:
+
+  Signatory-Related Rules
+
+  1. A1 — CSM Definition (line 219)
+
+  Only one signatory type qualifies:
+  ▎ "Authorized signatories with entity-level sole representation authority"
+
+  This means regular banking signatories (who can sign cheques, approve payments, operate bank accounts) are not covered — only signatories who can represent
+  the entire entity qualify.
+
+  2. D2 — Negative Signal: "Signatory-only" (line 436)
+
+  ▎ Signatory-only (no executive title) → weight: -0.25
+
+  A pure signatory without a governance title gets penalized, making it very hard to reach the 0.70 threshold.
+
+  3. ST1 — Signatory Weight Adjustments (line 773)
+
+  Country-specific weights for signatory-only roles:
+
+  ┌─────────┬─────────────────────────────┬────────┬────────────────────────────────┐
+  │ Country │            Token            │ Weight │             Effect             │
+  ├─────────┼─────────────────────────────┼────────┼────────────────────────────────┤
+  │ US      │ Entity-level sole authority │ 0.00   │ Not sufficient alone           │
+  ├─────────┼─────────────────────────────┼────────┼────────────────────────────────┤
+  │ DE      │ Prokura / Prokurist         │ 0.00   │ Commercial PoA, not governance │
+  ├─────────┼─────────────────────────────┼────────┼────────────────────────────────┤
+  │ DE      │ Handlungsbevollmaechtigter  │ 0.00   │ Limited authority              │
+  ├─────────┼─────────────────────────────┼────────┼────────────────────────────────┤
+  │ NL      │ Gevolmachtigde              │ 0.00   │ Not governance                 │
+  ├─────────┼─────────────────────────────┼────────┼────────────────────────────────┤
+  │ NL      │ Titelhouder                 │ 0.00   │ Not governance                 │
+  └─────────┴─────────────────────────────┴────────┴────────────────────────────────┘
+
+  ▎ (line 785): "Weight < 0.30 → role alone NOT sufficient for isCsm=true"
+
+  4. A5 — Signatory Calibration (line 241)
+
+  Classifies signatory type (sole/joint/none/unknown) but does not by itself grant CSM status — it's only a scoring modifier.
+
+  5. FC1 — No Governance Role (line 87)
+
+  ▎ "If roleHints contains no recognizable governance role title → isCsm=false"
+
+  A banking signatory title like "Authorized Signatory" or "Bank Signatory" is not a governance role title, so FC1 would trigger.
+
+  ---
+  Summary
+
+  There is no single line that says "banking signatory = non-CSM". Instead, it's the absence of inclusion:
+
+  - A1 only includes signatories with entity-level sole representation authority (line 219)
+  - FC1 excludes anyone without a governance role title (line 87)
+  - D2 penalizes signatory-only by -0.25 (line 436)
+  - ST1 gives 0.00 weight to most signatory tokens (line 773)

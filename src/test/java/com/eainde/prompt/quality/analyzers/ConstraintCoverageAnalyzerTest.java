@@ -177,4 +177,49 @@ class ConstraintCoverageAnalyzerTest {
         DimensionResult result = analyzer.analyze(prompt("Do stuff."));
         assertTrue(result.score() < 0.5);
     }
+
+    @Test
+    @DisplayName("CON-006: optional fields without defaults")
+    void optionalFieldsWithoutDefaults() {
+        DimensionResult result = analyzer.analyze(prompt(
+                "Extract data. Some fields are optional and nullable."));
+        assertTrue(result.issues().stream().anyMatch(i -> "CON-006".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("CON-006: no issue when defaults specified")
+    void optionalFieldsWithDefaults() {
+        DimensionResult result = analyzer.analyze(prompt(
+                "Extract data. Some fields are optional. If not provided, defaults to empty string."));
+        assertFalse(result.issues().stream().anyMatch(i -> "CON-006".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("CON-007: no input size handling")
+    void noInputSizeHandling() {
+        DimensionResult result = analyzer.analyze(prompt(
+                "Extract all names from the document."));
+        assertTrue(result.issues().stream().anyMatch(i -> "CON-007".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("CON-007: no issue when truncation mentioned")
+    void inputSizeHandlingPresent() {
+        DimensionResult result = analyzer.analyze(prompt(
+                "Extract names. If input exceeds 4000 tokens, truncate."));
+        assertFalse(result.issues().stream().anyMatch(i -> "CON-007".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("custom_lexicon_changes_detection: extended empty-handling keyword suppresses CON-001")
+    void custom_lexicon_changes_detection() {
+        com.eainde.prompt.quality.config.Lexicon lex =
+                com.eainde.prompt.quality.config.Lexicon.defaults()
+                        .extend("constraints.empty-handling", "on empty input");
+        ConstraintCoverageAnalyzer custom = new ConstraintCoverageAnalyzer(lex);
+        // prompt contains ONLY the new custom keyword (no default empty-handling phrase)
+        String system = "On empty input return nothing.";
+        DimensionResult result = custom.analyze(prompt(system));
+        assertFalse(result.issues().stream().anyMatch(i -> "CON-001".equals(i.ruleId())));
+    }
 }

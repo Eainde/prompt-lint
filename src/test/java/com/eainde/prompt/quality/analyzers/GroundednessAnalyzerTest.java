@@ -195,4 +195,39 @@ class GroundednessAnalyzerTest {
         DimensionResult result = analyzer.analyze(prompt("test", "{{input}}", Set.of("input")));
         assertEquals(1.0, result.maxScore());
     }
+
+    @Test
+    @DisplayName("GRD-007: conflicting grounding scope detected")
+    void conflictingGroundingScope() {
+        String system = "You are a specialist. Extract information only from the provided documents. "
+                + "Use your knowledge to fill in any gaps. Do not fabricate data.\n"
+                + "## Output\n```json\n{\"data\": []}\n```";
+        DimensionResult result = analyzer.analyze(prompt(system,
+                "--- document ---\n{{sourceText}}\n--- end ---", Set.of("sourceText")));
+        assertTrue(result.issues().stream().anyMatch(i -> "GRD-007".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("GRD-007: no conflict when only grounding present")
+    void noConflictWithOnlyGrounding() {
+        String system = "You are a specialist. Extract information only from the provided documents. "
+                + "Do not use external knowledge. Never fabricate data.\n"
+                + "## Output\n```json\n{\"data\": []}\n```";
+        DimensionResult result = analyzer.analyze(prompt(system,
+                "--- document ---\n{{sourceText}}\n--- end ---", Set.of("sourceText")));
+        assertFalse(result.issues().stream().anyMatch(i -> "GRD-007".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("custom_lexicon_changes_detection: extended grounding-instructions keyword suppresses GRD-001")
+    void custom_lexicon_changes_detection() {
+        com.eainde.prompt.quality.config.Lexicon lex =
+                com.eainde.prompt.quality.config.Lexicon.defaults()
+                        .extend("groundedness.grounding-instructions", "stick to the provided facts");
+        GroundednessAnalyzer custom = new GroundednessAnalyzer(lex);
+        // No default grounding phrase present, only the custom one
+        String system = "Stick to the provided facts and nothing else.";
+        DimensionResult result = custom.analyze(prompt(system, "{{input}}", Set.of("input")));
+        assertFalse(result.issues().stream().anyMatch(i -> "GRD-001".equals(i.ruleId())));
+    }
 }

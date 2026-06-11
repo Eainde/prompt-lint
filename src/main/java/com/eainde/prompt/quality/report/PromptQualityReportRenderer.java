@@ -1,5 +1,6 @@
 package com.eainde.prompt.quality.report;
 
+import com.eainde.prompt.quality.fix.PromptFix;
 import com.eainde.prompt.quality.model.DimensionResult;
 import com.eainde.prompt.quality.model.QualityIssue;
 import com.eainde.prompt.quality.model.Severity;
@@ -93,6 +94,18 @@ public class PromptQualityReportRenderer {
             sb.append("\n  Suggestions:\n");
             for (int i = 0; i < suggestions.size(); i++) {
                 sb.append(String.format("    %d. %s%n", i + 1, suggestions.get(i)));
+            }
+        }
+
+        // Suggested fixes
+        if (!report.suggestedFixes().isEmpty()) {
+            sb.append("\n  SUGGESTED FIXES:\n");
+            int i = 1;
+            for (PromptFix fix : report.suggestedFixes()) {
+                sb.append(String.format("    %d. [%s] %s: %s%n", i++,
+                        fix.confidence(), fix.ruleId(), fix.description()));
+                sb.append(String.format("       + %s%n",
+                        fix.replacement().replace("\n", "\n       + ")));
             }
         }
 

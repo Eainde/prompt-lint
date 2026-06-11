@@ -1,5 +1,6 @@
 package com.eainde.prompt.quality.analyzers;
 
+import com.eainde.prompt.quality.config.Lexicon;
 import com.eainde.prompt.quality.model.DimensionResult;
 import com.eainde.prompt.quality.model.PromptUnderTest;
 import com.eainde.prompt.quality.model.QualityIssue;
@@ -13,11 +14,39 @@ import java.util.regex.Pattern;
  */
 public class ConsistencyAnalyzer implements PromptDimensionAnalyzer {
 
+    /**
+     * NEEDED (sequential): rule IDs like RC1, RC2, A6 must be numbered without gaps.
+     * If gaps found (e.g., RC1, RC3 — missing RC2) → INFO CNS-004.
+     * No gaps → +1 point.
+     */
     private static final Pattern RULE_NUMBER_PATTERN =
             Pattern.compile("\\b([A-Z]{1,3})(\\d+)\\b");
 
+    /**
+     * ALIGNMENT CHECK: template variables {{varName}} must match declared inputs.
+     * {{var}} in user prompt but NOT in declaredInputs → CRITICAL CNS-001 (undeclared var).
+     * In declaredInputs but NOT in user prompt → WARNING CNS-002 (unused input).
+     * {{var}} in system prompt → WARNING CNS-003 (should be in user prompt only).
+     */
     private static final Pattern TEMPLATE_VAR_PATTERN =
             Pattern.compile("\\{\\{(\\w+)\\}\\}");
+
+    /**
+     * NOT NEEDED: forward references to later steps ("see step 5" inside step 2).
+     * If step N references step M where M &gt; N → INFO CNS-008 (confusing ordering).
+     */
+    private static final Pattern STEP_REF_PATTERN =
+            Pattern.compile("(?i)step\\s+(\\d+)");
+
+    private final Lexicon lexicon;
+
+    public ConsistencyAnalyzer() {
+        this(Lexicon.defaults());
+    }
+
+    public ConsistencyAnalyzer(Lexicon lexicon) {
+        this.lexicon = lexicon;
+    }
 
     @Override
     public String dimensionName() {
@@ -117,6 +146,38 @@ public class ConsistencyAnalyzer implements PromptDimensionAnalyzer {
         }
 
         totalPoints += hasContradiction ? 0 : 1;
+
+        // Check 5: Tone/voice shifts (CNS-007)
+        long formalCount = lexicon.keywords("consistency.formal-markers").stream().filter(lower::contains).count();
+        long informalCount = lexicon.keywords("consistency.informal-markers").stream().filter(lower::contains).count();
+        if (formalCount >= 2 && informalCount >= 2) {
+            issues.add(QualityIssue.info("CONSISTENCY",
+                    "Tone/voice shift detected: mixing formal and informal language.",
+                    "CNS-007"));
+        }
+
+        // Check 6: Forward references in numbered steps (CNS-008)
+        String[] lines = prompt.systemPrompt().split("\\n");
+        int currentStep = 0;
+        for (String line : lines) {
+            Matcher stepDefMatcher = Pattern.compile("(?i)^\\s*step\\s+(\\d+)\\s*:").matcher(line);
+            if (stepDefMatcher.find()) {
+                currentStep = Integer.parseInt(stepDefMatcher.group(1));
+            }
+            if (currentStep > 0) {
+                Matcher refMatcher = STEP_REF_PATTERN.matcher(line);
+                while (refMatcher.find()) {
+                    int referenced = Integer.parseInt(refMatcher.group(1));
+                    // Skip the step definition itself
+                    if (referenced > currentStep) {
+                        issues.add(QualityIssue.info("CONSISTENCY",
+                                "Step " + currentStep + " references step " + referenced
+                                        + " which hasn't been defined yet.", "CNS-008"));
+                        break;
+                    }
+                }
+            }
+        }
 
         double score = maxPoints > 0 ? totalPoints / maxPoints : 0;
         return new DimensionResult("CONSISTENCY", Math.min(score, 1.0), 1.0,

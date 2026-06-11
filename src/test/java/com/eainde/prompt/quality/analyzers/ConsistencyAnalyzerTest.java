@@ -193,4 +193,59 @@ class ConsistencyAnalyzerTest {
         // R1 appears twice but distinct gives [1,2], no gap
         assertFalse(result.issues().stream().anyMatch(i -> "CNS-004".equals(i.ruleId())));
     }
+
+    @Test
+    @DisplayName("CNS-007: tone shift detected")
+    void toneShiftDetected() {
+        String system = "You shall extract all entities. Hereby validate each. "
+                + "Just go ahead and grab whatever looks right. Okay cool.";
+        DimensionResult result = analyzer.analyze(prompt(system, "{{input}}", Set.of("input")));
+        assertTrue(result.issues().stream().anyMatch(i -> "CNS-007".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("CNS-007: no tone shift with consistent voice")
+    void noToneShift() {
+        String system = "You must extract all entities. You must validate each field.";
+        DimensionResult result = analyzer.analyze(prompt(system, "{{input}}", Set.of("input")));
+        assertFalse(result.issues().stream().anyMatch(i -> "CNS-007".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("CNS-008: forward reference in steps")
+    void forwardReferenceInSteps() {
+        String system = "Step 1: Apply the format from step 3.\nStep 2: Validate.\nStep 3: Format as JSON.";
+        DimensionResult result = analyzer.analyze(prompt(system, "{{input}}", Set.of("input")));
+        assertTrue(result.issues().stream().anyMatch(i -> "CNS-008".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("CNS-008: no issue with backward reference")
+    void backwardReferenceOk() {
+        String system = "Step 1: Extract data.\nStep 2: Validate step 1 output.\nStep 3: Format.";
+        DimensionResult result = analyzer.analyze(prompt(system, "{{input}}", Set.of("input")));
+        assertFalse(result.issues().stream().anyMatch(i -> "CNS-008".equals(i.ruleId())));
+    }
+
+    @Test
+    @DisplayName("custom_lexicon_changes_detection: extended informal-markers keyword triggers CNS-007")
+    void custom_lexicon_changes_detection() {
+        // Prompt uses formal markers "shall" and "hereby", plus two custom informal words
+        // "yo" and "dope" that are NOT in the default informal-markers list.
+        // Default analyzer must NOT fire CNS-007; custom (with both words added) MUST fire it.
+        String system = "You shall extract all entities. Hereby validate each field. "
+                + "Yo that result is dope.";
+
+        DimensionResult defaultResult = analyzer.analyze(prompt(system, "{{input}}", Set.of("input")));
+        assertFalse(defaultResult.issues().stream().anyMatch(i -> "CNS-007".equals(i.ruleId())),
+                "default analyzer must NOT emit CNS-007 without custom lexicon");
+
+        com.eainde.prompt.quality.config.Lexicon lex =
+                com.eainde.prompt.quality.config.Lexicon.defaults()
+                        .extend("consistency.informal-markers", "yo", "dope");
+        ConsistencyAnalyzer custom = new ConsistencyAnalyzer(lex);
+        DimensionResult customResult = custom.analyze(prompt(system, "{{input}}", Set.of("input")));
+        assertTrue(customResult.issues().stream().anyMatch(i -> "CNS-007".equals(i.ruleId())),
+                "custom analyzer MUST emit CNS-007 with 'yo' and 'dope' in lexicon");
+    }
 }
