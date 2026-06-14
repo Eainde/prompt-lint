@@ -31,11 +31,13 @@ It scores prompts across 8 quality dimensions, flags issues by severity, and pro
 ```xml
 <dependency>
     <groupId>com.eainde</groupId>
-    <artifactId>prompt-lint</artifactId>
+    <artifactId>prompt-lint-core</artifactId>
     <version>1.0-SNAPSHOT</version>
     <scope>test</scope>
 </dependency>
 ```
+
+> The library was split into modules in 1.0-SNAPSHOT. The engine is now `prompt-lint-core` (API and packages unchanged). To lint prompt **seed files** in CI without writing Java, see [Lint seed files in CI](#lint-seed-files-in-ci).
 
 ### Basic usage
 
@@ -391,8 +393,69 @@ Lexicon.defaults()
     .mergeFrom(Path.of("prompt-lint.yaml"));
 ```
 
+## Lint seed files in CI
+
+When prompts don't live in Java code — for example, they're loaded into an in-memory database from **seed files** checked into the repo — use the Maven plugin to lint those files directly. It extracts each prompt, runs the full analyzer, writes console + HTML reports, and fails the build below a threshold.
+
+Supported seed formats: SQL `INSERT` scripts, JSON, YAML, and `.properties`.
+
+```xml
+<plugin>
+    <groupId>com.eainde</groupId>
+    <artifactId>prompt-lint-maven-plugin</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <executions>
+        <execution>
+            <goals><goal>check</goal></goals>   <!-- bound to the verify phase -->
+        </execution>
+    </executions>
+    <configuration>
+        <failOnScoreBelow>0.75</failOnScoreBelow>
+        <failOnCritical>true</failOnCritical>
+        <htmlReport>true</htmlReport>           <!-- target/prompt-lint/report.html -->
+        <sources>
+            <source>
+                <path>src/main/resources/db/data.sql</path>
+                <!-- <type> is optional; inferred from the file extension -->
+                <mapping>
+                    <table>prompts</table>          <!-- SQL only: which table to read -->
+                    <nameField>agent_id</nameField> <!-- prompt id; omit for a generated id -->
+                    <systemPrompt>system_text</systemPrompt>
+                    <userPrompt>user_text</userPrompt>
+                    <agentType>agent_type</agentType>
+                </mapping>
+            </source>
+        </sources>
+    </configuration>
+</plugin>
+```
+
+Run it directly with `mvn prompt-lint:check`, or let it run on `mvn verify`.
+
+### Mapping by format
+
+A `<mapping>` names the **source field** that supplies each prompt attribute. `systemPrompt` is required (records without it are skipped with a warning); everything else is optional (`userPrompt` → empty, `agentType` → `DEFAULT`, `inputs` → comma-separated list, etc.).
+
+| Format | What a "field name" refers to | Record identity |
+|---|---|---|
+| **SQL** | a column name (case-insensitive); `<table>` filters which `INSERT`s are read | `<nameField>` column, else generated |
+| **JSON** | an object key; dotted paths like `prompt.system` are supported | array index, or the object key when the file is an object-of-objects |
+| **YAML** | same as JSON | the top-level key |
+| **properties** | the `<field>` in `prompts.<id>.<field>` keys | `<id>` segment |
+
+### Plugin parameters
+
+| Parameter | Default | Purpose |
+|---|---|---|
+| `failOnScoreBelow` | `0.75` | Build fails if any prompt scores below this |
+| `failOnCritical` | `true` | Build fails if any prompt has a CRITICAL issue |
+| `htmlReport` | `true` | Write `target/prompt-lint/report.html` |
+| `allowEmpty` | `false` | If false, a source yielding zero prompts fails the build (catches a broken `<mapping>`); also settable per `<source>` |
+| `lexiconFile` | — | Optional lexicon file to customize keyword lists (JSON/properties/YAML) |
+| `baselineFile` | — | Optional baseline file; only issues new since the baseline surface |
+
 ## Requirements
 
 - Java 17+
 - No runtime dependencies beyond Jackson (for JSON validation in `OutputContractAnalyzer`)
-- `jackson-dataformat-yaml` optional (YAML lexicon files only)
+- `jackson-dataformat-yaml` optional for the core (YAML lexicon files only); required by `prompt-lint-sources` for `.yaml` seed files

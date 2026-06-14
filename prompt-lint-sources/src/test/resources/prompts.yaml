@@ -1,0 +1,6 @@
+greeter:
+  system: "You greet users warmly."
+  type: formatting
+auditor:
+  system: "You review code for defects."
+  type: review

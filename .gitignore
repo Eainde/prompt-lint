@@ -12,6 +12,7 @@ target/
 *.iws
 *.iml
 *.ipr
+.idea
 
 ### Eclipse ###
 .apt_generated
@@ -42,5 +43,4 @@ build/
 .idea
 .superpowers
 .mvn
-CLAUDE.md
 /docs

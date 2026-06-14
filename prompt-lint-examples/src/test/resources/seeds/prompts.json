@@ -1,0 +1,8 @@
+[
+  {
+    "name": "json-classifier",
+    "system": "You classify the message sentiment as positive, negative, or neutral. Return only the label.",
+    "user": "Message: {{message}}",
+    "type": "classification"
+  }
+]

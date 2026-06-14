@@ -1,0 +1,6 @@
+{
+  "classifier": {
+    "prompt": { "system": "Classify the sentiment." },
+    "type": "classification"
+  }
+}

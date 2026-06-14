@@ -1,0 +1,12 @@
+[
+  {
+    "name": "extractor",
+    "system": "You extract structured names from text.",
+    "user": "Source: {{text}}",
+    "type": "extraction"
+  },
+  {
+    "name": "blank-system",
+    "user": "no system here"
+  }
+]

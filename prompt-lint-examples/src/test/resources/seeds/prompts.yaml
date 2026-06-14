@@ -1,0 +1,3 @@
+yaml-formatter:
+  system: "You reformat the input as a Markdown table with a header row. Return only the table."
+  type: formatting
